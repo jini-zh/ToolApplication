@@ -110,17 +110,22 @@ fi
 
 if [ $zmq -eq 1 ]
 then
-    git clone https://github.com/ToolDAQ/zeromq-4.0.7.git
-    
+    mkdir zeromq-4.0.7
     cd zeromq-4.0.7
+    git clone https://github.com/ToolDAQ/zeromq-4.0.7.git src
+
+    prefix=$PWD
+    cd src
     
-    ./configure --prefix=`pwd`
+    ./configure --prefix="$prefix"
     make -j $threads
     make install
+    cp -v include/zmq.hpp "$prefix/include"
     
-    export LD_LIBRARY_PATH=`pwd`/lib:$LD_LIBRARY_PATH
+    export LD_LIBRARY_PATH="$prefix/lib:$LD_LIBRARY_PATH"
+    unset prefix
     
-    cd ../
+    cd ../..
 fi
 
 if [ $boostflag -eq 1 ]
