@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 init=1
 tooldaq=1
 boostflag=1
