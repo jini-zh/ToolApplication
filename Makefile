@@ -1,6 +1,6 @@
 Dependencies=Dependencies
 
-CXXFLAGS=  -fPIC -Wpedantic -O3 # -g -lSegFault -rdynamic -DDEBUG
+CXXFLAGS= -std=c++11 -fPIC -Wall -O3 # -g -lSegFault -rdynamic -DDEBUG
 # -Wl,--no-as-needed
 
 ifeq ($(MAKECMDGOALS),debug)
@@ -16,8 +16,8 @@ BoostInclude= -I $(Dependencies)/boost_1_66_0/install/include
 DataModelInclude = 
 DataModelLib = 
 
-MyToolsInclude =
-MyToolsLib = 
+MyToolsInclude = -I $(Dependencies)/root/include/
+MyToolsLib = -L $(Dependencies)/root/lib -lCAENDigitizer -lCore -lRIO -lTree
 
 debug: all
 
