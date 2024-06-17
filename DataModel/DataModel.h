@@ -16,6 +16,9 @@
 
 #include <zmq.hpp>
 
+#include <caen++/v1290.hpp>
+#include <caen++/v792.hpp>
+
 using namespace ToolFramework;
 
 /**
@@ -40,6 +43,11 @@ class DataModel : public DAQDataModelBase {
   //TTree* GetTTree(std::string name);
   //void AddTTree(std::string name,TTree *tree);
   //void DeleteTTree(std::string name,TTree *tree);
+
+  std::mutex v1290_mutex;
+  std::list<std::vector<caen::V1290::Packet>> v1290_readout;
+  std::mutex v792_mutex;
+  std::list<std::vector<caen::V792::Packet>> v792_readout;
   
  private:
   
