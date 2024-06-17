@@ -14,6 +14,89 @@ void V792::connect() {
 void V792::configure() {
   *m_log << ML(3) << "Configuring V792... " << std::flush;
   qdc->reset();
+
+  bool  flag;
+  int   i;
+  float x;
+  std::string s;
+  std::string var;
+#define cfgvar(name, var) \
+  if (m_variables.Get(#name, var)) qdc->set_ ## name(var)
+#define cfgbool(name)  cfgvar(name, flag)
+#define cfgint(name)   cfgvar(name, i)
+
+  cfgint(geo_address);
+  cfgint(interrupt_level);
+  cfgint(interrupt_vector);
+
+  {
+    auto control = qdc->control1();
+    auto old_control = control;
+#define defbit(name) \
+    if (m_variables.Get(#name, flag)) control.set_ ## name(flag)
+    defbit(block_readout);
+    defbit(panel_resets_software);
+    defbit(bus_error_enabled);
+    defbit(align_64);
+#undef defbit
+    if (old_control != control) qdc->set_control1(control);
+  };
+
+  cfgint(event_trigger);
+
+  {
+    auto bitset = qdc->bitset2();
+    auto old_bitset = bitset;
+#define defbit(name) \
+    if (m_variables.Get(#name, flag)) bitset.set_ ## name(flag)
+    defbit(overflow_enabled);
+    defbit(threshold_enabled);
+    defbit(slide_enabled);
+    defbit(shift_threshold);
+    defbit(empty_enabled);
+    if (m_variables.Get("slide_subtraction_enabled", flag))
+      bitset.set_slide_subtraction_disabled(!flag);
+    defbit(all_triggers);
+#undef defbit
+    if (old_bitset != bitset) qdc->set_bitset2(bitset);
+  };
+
+  cfgint(crate_number);
+  cfgint(current_pedestal);
+  cfgint(slide_constant);
+
+  {
+    uint32_t mask;
+    bool mask_set = false;
+    if (m_variables.Get("enable_channels", s)) {
+      size_t j;
+      uint32_t mask = std::stol(s, &j, 16);
+      mask_set = true;
+      if (j != s.size())
+        throw std::runtime_error(
+            std::string("V792: invalid value for enable_channels: ") + s
+        );
+    };
+
+    std::stringstream ss;
+    for (uint8_t channel = 0; channel < 32; ++channel) {
+      ss << "channel_" << static_cast<int>(channel) << "_threshold";
+      if (m_variables.Get(ss.str(), x))
+        if (mask_set) {
+          qdc->set_channel_settings(channel, x, mask & 1);
+          mask >>= 1;
+        } else
+          qdc->set_channel_threshold(channel, x);
+      else if (mask_set) {
+        qdc->set_channel_enabled(channel, mask & 1);
+        mask >>= 1;
+      };
+    };
+  };
+#undef cfgint
+#undef cfgbool
+#undef cfgvar
+
   *m_log << ML(3) << "success" << std::endl;
 };
 
