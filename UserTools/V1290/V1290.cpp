@@ -74,7 +74,7 @@ void V1290::configure() {
   cfgfloat(dead_time);
   cfgbool(header_and_trailer_enabled);
   cfgint(event_size);
-  if (m_variables.Get("enable_error_mask",   flag)) tdc->enable_error_mark(flag);
+  if (m_variables.Get("enable_error_mark",   flag)) tdc->enable_error_mark(flag);
   if (m_variables.Get("enable_error_bypass", flag)) tdc->enable_error_bypass(flag);
 
   {
@@ -87,6 +87,7 @@ void V1290::configure() {
     defbit(channel);
     defbit(l1_parity);
     defbit(trigger_fifo);
+    defbit(trigger);
     defbit(readout_fifo);
     defbit(readout);
     defbit(setup);
