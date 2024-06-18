@@ -54,7 +54,7 @@ caen::Device::Connection caen_connection(
         + "' not found"
     );
 
-  caen::Device::Connection c;
+  caen::Device::Connection c {};
   c.type = caen_connection_string_to_type(string);
   if (c.type < 0) {
     ss << ": invalid connection type: " << string;
