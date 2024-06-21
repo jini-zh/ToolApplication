@@ -48,7 +48,7 @@ caen::Device::Connection caen_connection(
   if (!variables.Get(ss.str(), string))
     throw std::runtime_error(
         std::string("Cannot connect to ")
-        + prefix
+        + (prefix.empty() ? "a CAEN device" : prefix)
         + ": config variable `"
         + ss.str()
         + "' not found"
