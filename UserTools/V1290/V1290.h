@@ -7,7 +7,6 @@
 
 #include "Tool.h"
 #include "Utilities.h"
-#include "caen.h"
 
 class V1290: public ToolFramework::Tool {
   public:

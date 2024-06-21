@@ -2,6 +2,7 @@
 #include "DataModel.h"
 
 #include "V1290.h"
+#include "caen.h"
 
 void V1290::connect() {
   caen::Device::Connection connection = caen_connection(m_variables);
