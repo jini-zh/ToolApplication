@@ -55,9 +55,9 @@ caen::Device::Connection caen_connection(
     );
 
   caen::Device::Connection c {};
-  c.type = caen_connection_string_to_type(string);
-  if (c.type < 0) {
-    ss << ": invalid connection type: " << string;
+  c.link = caen_connection_string_to_type(string);
+  if (c.link < 0) {
+    ss << ": invalid connection link: " << string;
     throw std::runtime_error(ss.str());
   };
 
@@ -96,7 +96,7 @@ void caen_report_connection(
   log
     << "Connecting to "
     << device
-    << " (link = " << caen_connection_type_to_string(connection.type);
+    << " (link = " << caen_connection_type_to_string(connection.link);
   if (connection.is_ethernet())
     log << ", ip = " << connection.ip;
   else
