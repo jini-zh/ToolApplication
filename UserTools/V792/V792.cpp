@@ -14,6 +14,7 @@ void V792::connect() {
 void V792::configure() {
   *m_log << ML(3) << "Configuring V792... " << std::flush;
   qdc->reset();
+  qdc->clear();
 
   bool  flag;
   int   i;
@@ -54,8 +55,7 @@ void V792::configure() {
     defbit(slide_enabled);
     defbit(shift_threshold);
     defbit(empty_enabled);
-    if (m_variables.Get("slide_subtraction_enabled", flag))
-      bitset.set_slide_subtraction_disabled(!flag);
+    defbit(slide_subtraction_enabled);
     defbit(all_triggers);
 #undef defbit
     if (old_bitset != bitset) qdc->set_bitset2(bitset);
@@ -66,11 +66,11 @@ void V792::configure() {
   cfgint(slide_constant);
 
   {
-    uint32_t mask;
+    uint32_t mask = 0;
     bool mask_set = false;
     if (m_variables.Get("enable_channels", s)) {
       size_t j;
-      uint32_t mask = std::stol(s, &j, 16);
+      mask = std::stol(s, &j, 16);
       mask_set = true;
       if (j != s.size())
         throw std::runtime_error(
@@ -80,17 +80,15 @@ void V792::configure() {
 
     std::stringstream ss;
     for (uint8_t channel = 0; channel < 32; ++channel) {
+      ss.str({});
       ss << "channel_" << static_cast<int>(channel) << "_threshold";
-      if (m_variables.Get(ss.str(), x))
-        if (mask_set) {
-          qdc->set_channel_settings(channel, x, mask & 1);
-          mask >>= 1;
-        } else
-          qdc->set_channel_threshold(channel, x);
-      else if (mask_set) {
-        qdc->set_channel_enabled(channel, mask & 1);
-        mask >>= 1;
-      };
+      if (m_variables.Get(ss.str(), i))
+        if (mask_set)
+          qdc->set_channel_settings(channel, i, mask & 1 << channel);
+        else
+          qdc->set_channel_threshold(channel, i);
+      else if (mask_set)
+        qdc->set_channel_enabled(channel, mask & 1 << channel);
     };
   };
 #undef cfgint
