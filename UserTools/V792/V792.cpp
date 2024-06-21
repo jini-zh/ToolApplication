@@ -99,13 +99,25 @@ void V792::configure() {
 };
 
 void V792::readout() {
-  qdc->readout(buffer);
-  if (buffer.size() == 0) {
+  qdc->readout_wa(buffer);
+
+  // Find the first Invalid packet, or skip to the end of the buffer
+  uint32_t n = 0;
+  while (n < buffer.size() && buffer[n].type() == caen::V792::Packet::Data)
+    ++n;
+  if (n < buffer.size() && buffer[n].type() == caen::V792::Packet::EndOfBlock)
+    ++n;
+  while (n < buffer.size() && buffer[n].type() == caen::V792::Packet::Header)
+    n += buffer[n].as<caen::V792::Header>().count() + 2;
+
+  if (n == 0) {
     usleep(100);
     return;
   };
 
-  std::vector<caen::V792::Packet> data(buffer.begin(), buffer.end());
+  if (n > buffer.size()) n = buffer.size();
+
+  std::vector<caen::V792::Packet> data(buffer.begin(), buffer.begin() + n);
 
   std::lock_guard<std::mutex> lock(m_data->v792_mutex);
   m_data->v792_readout.push_back(std::move(data));
