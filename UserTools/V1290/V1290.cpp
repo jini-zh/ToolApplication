@@ -26,6 +26,8 @@ void V1290::configure() {
 #define cfgint(name)   cfgvar(name, i)
 #define cfgfloat(name) cfgvar(name, x)
 
+  cfgbool(triggered_mode);
+
   cfgbool(bus_error_enabled);
   cfgbool(sw_termination);
   cfgbool(sw_termination_enabled);
@@ -36,7 +38,6 @@ void V1290::configure() {
   cfgint(interrupt_level);
   cfgint(interrupt_vector);
   cfgint(geo_address);
-  cfgbool(triggered_mode);
   cfgfloat(window_width);
   cfgfloat(window_offset);
   cfgfloat(search_margin);
