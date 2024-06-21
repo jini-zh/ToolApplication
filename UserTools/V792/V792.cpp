@@ -102,13 +102,21 @@ void V792::readout() {
   qdc->readout_wa(buffer);
 
   // Find the first Invalid packet, or skip to the end of the buffer
-  uint32_t n = 0;
-  while (n < buffer.size() && buffer[n].type() == caen::V792::Packet::Data)
-    ++n;
-  if (n < buffer.size() && buffer[n].type() == caen::V792::Packet::EndOfBlock)
-    ++n;
-  while (n < buffer.size() && buffer[n].type() == caen::V792::Packet::Header)
-    n += buffer[n].as<caen::V792::Header>().count() + 2;
+  uint32_t n = buffer.size();
+  if (n > 0 && buffer[n-1].type() == caen::V792::Packet::Invalid)
+    if (buffer[0].type() == caen::V792::Packet::Invalid)
+      n = 0;
+    else {
+      // binary search
+      uint32_t m = 0;
+      while (n - m > 1) {
+        uint32_t k = (n + m) / 2;
+        if (buffer[k].type() == caen::V792::Packet::Invalid)
+          n = k;
+        else
+          m = k;
+      };
+    };
 
   if (n == 0) {
     usleep(100);
