@@ -21,7 +21,7 @@ class V1290: public ToolFramework::Tool {
       Thread(V1290& tool): tool(tool) {};
     };
 
-    std::unique_ptr<caen::V1290> tdc;
+    std::vector<caen::V1290> tdcs;
     caen::V1290::Buffer buffer;
     std::unique_ptr<Thread> thread;
     ToolFramework::Utilities util;

@@ -39,53 +39,80 @@ const char* caen_connection_type_to_string(CAENComm_ConnectionType type) {
   };
 };
 
-caen::Device::Connection caen_connection(
-    ToolFramework::Store& variables, const std::string& prefix
+std::list<caen::Device::Connection> caen_connections(
+    ToolFramework::Store& variables
 ) {
   std::stringstream ss;
   std::string string;
-  ss << prefix << "link";
-  if (!variables.Get(ss.str(), string))
-    throw std::runtime_error(
-        std::string("Cannot connect to ")
-        + (prefix.empty() ? "a CAEN device" : prefix)
-        + ": config variable `"
-        + ss.str()
-        + "' not found"
-    );
 
-  caen::Device::Connection c {};
-  c.link = caen_connection_string_to_type(string);
-  if (c.link < 0) {
-    ss << ": invalid connection link: " << string;
+  auto parse_link = [&](const std::string& string) -> CAENComm_ConnectionType {
+    CAENComm_ConnectionType result = caen_connection_string_to_type(string);
+    if (result >= 0) return result;
+
+    ss.str({});
+    ss << "caen_connections: invalid connection link: " << string;
     throw std::runtime_error(ss.str());
   };
 
-  ss.str(prefix);
-  if (c.is_ethernet()) {
-    ss << "ip";
-    if (!variables.Get(ss.str(), c.ip)) {
-      ss << " is not found in the configuration file";
-      throw std::runtime_error(ss.str());
-    };
+  auto get_hex = [&](const std::string& name, uint32_t& value) -> bool {
+    if (!variables.Get(name, string)) return false;
+    size_t end;
+    value = std::stol(string, &end, 16);
+    if (end == string.size()) return value;
 
-    return c;
+    ss.str({});
+    ss
+      << "caen_connections: invalid hexadecimal value `"
+      << string
+      << "' for option "
+      << name;
+    throw std::runtime_error(ss.str());
   };
 
-  ss.str(prefix);
-  ss << "arg";
-  variables.Get(ss.str(), c.arg);
+  caen::Device::Connection default_ { .link = CAENComm_USB };
+  bool default_set = variables.Get("link", string);
+  if (default_set) default_.link = parse_link(string);
 
-  ss.str(prefix);
-  ss << "conet";
-  variables.Get(ss.str(), c.conet);
+  default_set = variables.Get("ip",    default_.ip)    || default_set;
+  default_set = variables.Get("arg",   default_.arg)   || default_set;
+  default_set = variables.Get("conet", default_.conet) || default_set;
+  if (get_hex("vme", default_.vme)) {
+    default_.vme <<= 16;
+    default_set = true;
+  };
 
-  ss.str(prefix);
-  ss << "vme";
-  variables.Get(ss.str(), string);
-  c.vme = std::stoi(string, nullptr, 16);
+  std::list<caen::Device::Connection> result;
+  for (int i = 0; ; ++i) {
+    caen::Device::Connection connection = default_;
 
-  return c;
+    ss.str({});
+    ss << "link_" << i;
+    bool set = variables.Get(ss.str(), string);
+    if (set) connection.link = parse_link(string);
+
+    ss.str({});
+    ss << "ip_" << i;
+    set = variables.Get(ss.str(), connection.ip)    || set;
+
+    ss.str({});
+    ss << "arg_" << i;
+    set = variables.Get(ss.str(), connection.arg)   || set;
+
+    ss.str({});
+    ss << "conet_" << i;
+    set = variables.Get(ss.str(), connection.conet) || set;
+
+    ss.str({});
+    ss << "vme_" << i;
+    set = get_hex(ss.str(), connection.vme)         || set;
+
+    if (!set) break;
+
+    result.push_back(connection);
+  };
+
+  if (result.empty() && default_set) result.push_back(default_);
+  return result;
 };
 
 void caen_report_connection(

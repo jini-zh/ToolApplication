@@ -4,66 +4,86 @@
 #include "caen.h"
 
 void V812::connect() {
-  auto connection = caen_connection(m_variables);
-  caen_report_connection(*m_log << ML(3), "V821", connection);
-  cfd.reset(new caen::V812(connection));
-  *m_log << ML(3) << "connected" << std::endl;
+  auto connections = caen_connections(m_variables);
+  cfds.reserve(connections.size());
+  for (auto& connection : connections) {
+    caen_report_connection(*m_log << ML(3), "V812", connection);
+    cfds.emplace_back(connection);
+  };
+};
+
+template <typename T>
+static bool cfg_get(
+    ToolFramework::Store& variables,
+    std::string name,
+    int index,
+    T& var
+) {
+  std::stringstream ss;
+  ss << name << '_' << index;
+  return variables.Get(ss.str(), var) || variables.Get(std::move(name), var);
 };
 
 void V812::configure() {
   *m_log << ML(3) << "Configuring V812... " << std::flush;
 
-  std::string s;
-  bool flag;
-  float x;
-  int i;
-  
-  uint16_t mask = ~0;
-  bool mask_set = false;
-  if (m_variables.Get("enable", s)) {
-    size_t j;
-    mask = std::stol(s, &j, 16);
-    mask_set = true;
-    if (j != s.size())
-      throw std::runtime_error(
-          std::string("V812: invalid value for enable_channels: ") + s
-      );
-  };
+  for (int cfd_index = 0; cfd_index < cfds.size(); ++cfd_index) {
+    caen::V812& cfd = cfds[cfd_index];
 
-  std::stringstream ss;
-  for (uint8_t channel = 0; channel < 16; ++channel) {
-    ss.str({});
-    ss << "enable_" << channel;
-    if (m_variables.Get(ss.str(), flag)) {
-      uint32_t bit = 1 << channel;
-      if (flag) mask |= bit;
-      else      mask &= ~bit;
-      mask_set = true;
+    std::string s;
+    bool flag;
+    float x;
+    int i;
+
+    {
+      uint32_t mask = 0;
+      bool mask_set = false;
+      if (cfg_get(m_variables, "enable_channels", cfd_index, s)) {
+        mask_set = true;
+        size_t end;
+        mask = std::stol(s, &end, 16);
+        if (end != s.size())
+          throw std::runtime_error(
+              std::string("V812: invalid value for enable_channels: ") + s
+          );
+      };
+
+      std::stringstream ss;
+      for (uint8_t channel = 0; channel < 16; ++channel) {
+        ss.str({});
+        ss << "enable_channel_" << static_cast<int>(channel);
+        if (cfg_get(m_variables, ss.str(), cfd_index, flag)) {
+          mask_set = true;
+          uint16_t bit = 1 << channel;
+          if (flag) mask |=  bit;
+          else      mask &= ~bit;
+        };
+
+        ss.str({});
+        ss << "channel_" << static_cast<int>(channel) << "_threshold";
+        if (cfg_get(m_variables, ss.str(), cfd_index, x)) cfd.set_threshold(channel, x);
+      };
+
+      if (mask_set) cfd.enable_channels(mask);
     };
 
-    ss.str({});
-    ss << "threshold_" << channel;
-    if (m_variables.Get(ss.str(), x)) cfd->set_threshold(channel, x);
+    if (cfg_get(m_variables, "output_width", cfd_index, i))
+      cfd.set_output_width(i);
+    if (cfg_get(m_variables, "output_width_0-7", cfd_index, i))
+      cfd.set_output_width(0, i);
+    if (cfg_get(m_variables, "output_width_8-15", cfd_index, i))
+      cfd.set_output_width(1, i);
+
+    if (cfg_get(m_variables, "dead_time", cfd_index, i))
+      cfd.set_dead_time(i);
+    if (cfg_get(m_variables, "dead_time_0-7", cfd_index, i))
+      cfd.set_dead_time(0, i);
+    if (cfg_get(m_variables, "dead_time_8-15", cfd_index, i))
+      cfd.set_dead_time(1, i);
+
+    if (cfg_get(m_variables, "majority_threshold", cfd_index, i))
+      cfd.set_majority_threshold(i);
   };
-
-  if (mask_set) cfd->enable_channels(mask);
-
-  if (m_variables.Get("output_width_0-7", i))
-    cfd->set_output_width(0, i);
-  if (m_variables.Get("output_width_8-15", i))
-    cfd->set_output_width(1, i);
-  if (m_variables.Get("output_width", i))
-    cfd->set_output_width(i);
-
-  if (m_variables.Get("dead_time_0-7", i))
-    cfd->set_dead_time(0, i);
-  if (m_variables.Get("dead_time_8-15", i))
-    cfd->set_dead_time(1, i);
-  if (m_variables.Get("dead_time", i))
-    cfd->set_dead_time(i);
-
-  if (m_variables.Get("majority_threshold", i))
-    cfd->set_majority_threshold(i);
 
   *m_log << ML(3) << "success" << std::endl;
 };
@@ -92,7 +112,7 @@ bool V812::Initialise(std::string configfile, DataModel& data) {
 
 bool V812::Finalise() {
   try {
-    if (cfd) delete cfd.release();
+    cfds.clear();
 
     return true;
   } catch (std::exception& e) {

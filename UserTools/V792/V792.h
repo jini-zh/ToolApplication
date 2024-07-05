@@ -21,7 +21,7 @@ class V792: public ToolFramework::Tool {
       Thread(V792& tool): tool(tool) {};
     };
 
-    std::unique_ptr<caen::V792> qdc;
+    std::vector<caen::V792> qdcs;
     caen::V792::Buffer buffer;
     std::unique_ptr<Thread> thread;
     ToolFramework::Utilities util;

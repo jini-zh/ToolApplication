@@ -4,6 +4,7 @@
 #define CAEN_H
 
 #include <string>
+#include <list>
 
 #include <caen++/caen.hpp>
 
@@ -19,10 +20,9 @@ caen_connection_string_to_type(const std::string&);
 const char*
 caen_connection_type_to_string(CAENComm_ConnectionType);
 
-// Extracts variables in form of `${prefix}link`, `${prefix}arg` etc. to build
-// a CAEN++ connection description
-caen::Device::Connection
-caen_connection(ToolFramework::Store& variables, const std::string& prefix = "");
+std::list<caen::Device::Connection> caen_connections(
+    ToolFramework::Store& variables
+);
 
 // Prints a message to log describing connection information. Useful for
 // verbosity logging of connection attempts.

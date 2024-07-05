@@ -14,7 +14,7 @@ class V812: public ToolFramework::Tool {
     bool Finalise();
 
   private:
-    std::unique_ptr<caen::V812> cfd;
+    std::vector<caen::V812> cfds;
 
     void connect();
     void configure();
