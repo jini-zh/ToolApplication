@@ -73,6 +73,7 @@ void V792::configure() {
       defbit(slide);
       if (m_variables.Get("shift_threshold", flag))
         bitset.set_shift_threshold(flag);
+      defbit(empty);
       defbit(slide_subtraction);
       if (m_variables.Get("all_triggers", flag))
         bitset.set_all_triggers(flag);
