@@ -5,8 +5,9 @@ tooldaq=1
 boostflag=1
 zmq=1
 final=1
+caenpp=1
 rootflag=0
-setup=1
+setup=0
 threads=`nproc --all`
 
 while [ ! $# -eq 0 ]
@@ -36,6 +37,11 @@ do
             echo "Installing ToolDAQ without zmq"
             zmq=0
             ;;
+
+        --no_caenpp )
+	    echo "Installing ToolDAQ without caen++"
+	    caenpp=0
+	    ;;
 
 	--no_tooldaq )
 	    echo "Installing dependancies without ToolDAQ"
@@ -171,6 +177,15 @@ then
     
 fi
 
+if [ $caenpp -eq 1 ]
+then
+    git clone https://github.com/WCTEDAQ/caenpp.git caen++
+
+    cd caen++
+    make -j $threads
+    export LD_LIBRARY_PATH=`pwd`:$LD_LIBRARY_PATH
+    cd ..
+fi
 
 cd ../
 
@@ -197,7 +212,7 @@ then
     git add ./Setup.sh
     git add ./src/main.cpp
     rm -f ./GetToolFramework.sh
-    sed -i 's/setup=1/setup=0/' ./GetToolDAQ.sh
+    sed -i 's/setup=0/setup=0/' ./GetToolDAQ.sh
 fi   
     make clean
     make -j $threads
