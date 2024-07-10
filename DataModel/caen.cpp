@@ -57,7 +57,7 @@ std::list<caen::Device::Connection> caen_connections(
   auto get_hex = [&](const std::string& name, uint32_t& value) -> bool {
     if (!variables.Get(name, string)) return false;
     size_t end;
-    value = std::stol(string, &end, 16);
+    value = std::stoul(string, &end, 16);
     if (end == string.size()) return value;
 
     ss.str({});
