@@ -289,22 +289,6 @@ void V1290::readout() {
   };
 };
 
-void V1290::readout_thread(Thread_args* arg) {
-  Thread* thread = static_cast<Thread*>(arg);
-  V1290& tool = thread->tool;
-  try {
-    tool.readout();
-  } catch (std::exception& e) {
-    *tool.m_log << tool.ML(0) << e.what() << std::endl;
-    thread->kill = true;
-  };
-};
-
-void V1290::run_readout() {
-  thread.reset(new Thread(*this));
-  util.CreateThread("V1290", &readout_thread, thread.get());
-};
-
 bool V1290::Initialise(std::string configfile, DataModel& data) {
   try {
     if (configfile != "") m_variables.Initialise(configfile);
@@ -331,7 +315,21 @@ bool V1290::Initialise(std::string configfile, DataModel& data) {
 bool V1290::Execute() {
   if (tdcs.empty()) return true;
   try {
-    run_readout();
+    thread.reset(
+        new ThreadLoop::handle(
+          m_data->vme_readout.subscribe(
+            [this]() -> bool {
+              try {
+                readout();
+                return true;
+              } catch (std::exception& e) {
+                *m_log << ML(0) << e.what() << std::endl;
+                return false;
+              };
+            }
+          )
+        )
+    );
     return true;
   } catch (std::exception& e) {
     *m_log << ML(0) << e.what() << std::endl;
@@ -342,9 +340,10 @@ bool V1290::Execute() {
 bool V1290::Finalise() {
   try {
     if (thread) {
-      util.KillThread(thread.get());
+      m_data->vme_readout.unsubscribe(*thread);
       delete thread.release();
     };
+
     tdcs.clear();
 
     return true;
@@ -352,4 +351,8 @@ bool V1290::Finalise() {
     *m_log << ML(0) << e.what() << std::endl;
     return false;
   };
+};
+
+V1290::~V1290() {
+  if (thread) m_data->vme_readout.unsubscribe(*thread);
 };

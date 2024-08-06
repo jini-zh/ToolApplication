@@ -5,6 +5,11 @@
 #include <string>
 #include <vector>
 
+#include <zmq.hpp>
+
+#include <caen++/v1290.hpp>
+#include <caen++/v792.hpp>
+
 //#include "TTree.h"
 
 #include "Store.h"
@@ -13,11 +18,7 @@
 #include "DAQUtilities.h"
 #include "SlowControlCollection.h"
 #include "DAQDataModelBase.h"
-
-#include <zmq.hpp>
-
-#include <caen++/v1290.hpp>
-#include <caen++/v792.hpp>
+#include "ThreadLoop.h"
 
 using namespace ToolFramework;
 
@@ -43,6 +44,8 @@ class DataModel : public DAQDataModelBase {
   //TTree* GetTTree(std::string name);
   //void AddTTree(std::string name,TTree *tree);
   //void DeleteTTree(std::string name,TTree *tree);
+
+  ThreadLoop vme_readout;
 
   std::mutex v1290_mutex;
   std::list<std::vector<caen::V1290::Packet>> v1290_readout;

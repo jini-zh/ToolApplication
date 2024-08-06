@@ -6,33 +6,24 @@
 #include <caen++/v1290.hpp>
 
 #include "Tool.h"
-#include "Utilities.h"
+#include "ThreadLoop.h"
 
 class V1290: public ToolFramework::Tool {
   public:
+    ~V1290();
+
     bool Initialise(std::string configfile, DataModel&);
     bool Execute();
     bool Finalise();
 
   private:
-    struct Thread: public ToolFramework::Thread_args {
-      V1290& tool;
-
-      Thread(V1290& tool): tool(tool) {};
-    };
-
     std::vector<caen::V1290> tdcs;
     caen::V1290::Buffer buffer;
-    std::unique_ptr<Thread> thread;
-    ToolFramework::Utilities util;
+    std::unique_ptr<ThreadLoop::handle> thread;
 
     void connect();
     void configure();
     void readout();
-
-    static void readout_thread(ToolFramework::Thread_args* arg);
-
-    void run_readout();
 };
 
 #endif
