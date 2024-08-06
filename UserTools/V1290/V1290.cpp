@@ -82,7 +82,6 @@ static bool cfg_get_mask(
       else      mask &= ~bit;
     };
   };
-  fprintf(stderr, "cfg_get_mask %s => %x, %d\n", name.c_str(), mask, set);
   return set;
 };
 
