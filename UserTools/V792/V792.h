@@ -10,8 +10,6 @@
 
 class V792: public ToolFramework::Tool {
   public:
-    ~V792();
-
     bool Initialise(std::string configfile, DataModel&);
     bool Execute();
     bool Finalise();
@@ -19,7 +17,7 @@ class V792: public ToolFramework::Tool {
   private:
     std::vector<caen::V792> qdcs;
     caen::V792::Buffer buffer;
-    std::unique_ptr<ThreadLoop::handle> thread;
+    ThreadLoop::Thread thread;
 
     void connect();
     void configure();

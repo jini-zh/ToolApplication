@@ -9,42 +9,74 @@
 
 class ThreadLoop {
   private:
-    struct Action;
+    struct Task;
 
     struct Subscription {
-      std::list<Action>::iterator iterator;
+      std::list<Task>::iterator task;
       bool erased;
     };
 
-    struct Action {
+    struct Task {
       std::function<bool ()> function;
       Subscription* subscription;
     };
 
   public:
-    using handle = std::list<Subscription>::iterator;
+    class Thread {
+      public:
+        Thread() {};
+        Thread(Thread&& thread):
+          loop(thread.loop), subscription(thread.subscription)
+        {
+          thread.loop = nullptr;
+        };
+
+        Thread(ThreadLoop& loop, std::function<bool ()> function):
+          loop(&loop), subscription(loop.add_(std::move(function)))
+        {};
+
+        ~Thread() { terminate(); };
+
+        Thread& operator=(Thread&& thread) {
+          terminate();
+          loop         = thread.loop;
+          subscription = thread.subscription;
+          thread.loop  = nullptr;
+          return *this;
+        };
+
+        bool alive() const { return loop; };
+
+        void terminate() {
+          if (!loop) return;
+          loop->remove(subscription);
+          loop = nullptr;
+        };
+
+      private:
+        ThreadLoop* loop = nullptr;
+        std::list<Subscription>::iterator subscription;
+    };
 
     ~ThreadLoop();
 
-    handle subscribe(std::function<bool ()>);
-    void unsubscribe(handle);
-
-    void pause()  { pause_ = true;  };
-    void resume() { pause_ = false; };
-    bool paused() const { return pause_;  };
-
-    void clear();
+    Thread add(std::function<bool ()> function) {
+      return Thread(*this, std::move(function));
+    };
 
   private:
-    std::list<Action> actions;
-    std::list<Action>::iterator current = actions.end();
+    std::list<Task> tasks;
+    std::list<Task>::iterator current = tasks.end();
     std::list<Subscription> subscriptions;
-    std::thread* thread = nullptr;
+    std::thread os_thread;
     std::mutex mutex;
     std::condition_variable cv;
-    bool pause_  = false;
-    bool paused_ = false;
-    bool stop_   = false;
+    bool pause  = false;
+    bool paused = false;
+    bool stop   = false;
+
+    std::list<Subscription>::iterator add_(std::function<bool ()>);
+    void remove(std::list<Subscription>::iterator);
 
     void loop();
     void lock();

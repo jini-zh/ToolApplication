@@ -176,20 +176,16 @@ bool V792::Initialise(std::string configfile, DataModel& data) {
 bool V792::Execute() {
   if (qdcs.empty()) return true;
   try {
-    thread.reset(
-        new ThreadLoop::handle(
-          m_data->vme_readout.subscribe(
-            [this]() -> bool {
-              try {
-                readout();
-                return true;
-              } catch (std::exception& e) {
-                *m_log << ML(0) << e.what() << std::endl;
-                return false;
-              }
-            }
-          )
-        )
+    thread = m_data->vme_readout.add(
+      [this]() -> bool {
+        try {
+          readout();
+          return true;
+        } catch (std::exception& e) {
+          *m_log << ML(0) << e.what() << std::endl;
+          return false;
+        }
+      }
     );
     return true;
   } catch (std::exception& e) {
@@ -200,10 +196,7 @@ bool V792::Execute() {
 
 bool V792::Finalise() {
   try {
-    if (thread) {
-      m_data->vme_readout.unsubscribe(*thread);
-      delete thread.release();
-    };
+    if (thread.alive()) thread.terminate();
 
     qdcs.clear();
 
@@ -212,8 +205,4 @@ bool V792::Finalise() {
     *m_log << ML(0) << e.what() << std::endl;
     return false;
   };
-};
-
-V792::~V792() {
-  if (thread) m_data->vme_readout.unsubscribe(*thread);
 };

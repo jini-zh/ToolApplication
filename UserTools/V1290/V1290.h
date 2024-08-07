@@ -10,8 +10,6 @@
 
 class V1290: public ToolFramework::Tool {
   public:
-    ~V1290();
-
     bool Initialise(std::string configfile, DataModel&);
     bool Execute();
     bool Finalise();
@@ -19,7 +17,7 @@ class V1290: public ToolFramework::Tool {
   private:
     std::vector<caen::V1290> tdcs;
     caen::V1290::Buffer buffer;
-    std::unique_ptr<ThreadLoop::handle> thread;
+    ThreadLoop::Thread thread;
 
     void connect();
     void configure();

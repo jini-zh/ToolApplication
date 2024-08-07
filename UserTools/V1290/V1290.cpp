@@ -315,20 +315,16 @@ bool V1290::Initialise(std::string configfile, DataModel& data) {
 bool V1290::Execute() {
   if (tdcs.empty()) return true;
   try {
-    thread.reset(
-        new ThreadLoop::handle(
-          m_data->vme_readout.subscribe(
-            [this]() -> bool {
-              try {
-                readout();
-                return true;
-              } catch (std::exception& e) {
-                *m_log << ML(0) << e.what() << std::endl;
-                return false;
-              };
-            }
-          )
-        )
+    thread = m_data->vme_readout.add(
+        [this]() -> bool {
+          try {
+            readout();
+            return true;
+          } catch (std::exception& e) {
+            *m_log << ML(0) << e.what() << std::endl;
+            return false;
+          }
+        }
     );
     return true;
   } catch (std::exception& e) {
@@ -339,10 +335,7 @@ bool V1290::Execute() {
 
 bool V1290::Finalise() {
   try {
-    if (thread) {
-      m_data->vme_readout.unsubscribe(*thread);
-      delete thread.release();
-    };
+    if (thread.alive()) thread.terminate();
 
     tdcs.clear();
 
@@ -351,8 +344,4 @@ bool V1290::Finalise() {
     *m_log << ML(0) << e.what() << std::endl;
     return false;
   };
-};
-
-V1290::~V1290() {
-  if (thread) m_data->vme_readout.unsubscribe(*thread);
 };

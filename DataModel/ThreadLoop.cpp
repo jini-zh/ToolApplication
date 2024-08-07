@@ -1,108 +1,96 @@
 #include "ThreadLoop.h"
 
 ThreadLoop::~ThreadLoop() {
-  if (!thread) return;
-  stop_ = true;
-  thread->join();
-  delete thread;
-};
-
-void ThreadLoop::clear() {
-  stop_ = true;
-  if (thread) {
-    thread->join();
-    delete thread;
-  };
-  actions.clear();
-  subscriptions.clear();
-  current = actions.end();
+  if (!os_thread.joinable()) return;
+  stop = true;
+  os_thread.join();
 };
 
 void ThreadLoop::lock() {
   if (!mutex.try_lock()) {
-    pause_ = true;
+    pause = true;
     mutex.lock();
   };
 };
 
 void ThreadLoop::unlock() {
   mutex.unlock();
-  if (pause_) {
-    pause_ = false;
+  if (pause) {
+    pause = false;
     cv.notify_all();
   };
 };
 
-ThreadLoop::handle ThreadLoop::subscribe(std::function<bool ()> function) {
+std::list<ThreadLoop::Subscription>::iterator
+ThreadLoop::add_(std::function<bool ()> function) {
   lock();
+  std::list<Subscription>::iterator subscription;
   try {
-    actions.push_front({ std::move(function), nullptr });
-    subscriptions.push_front({ actions.begin(), false });
-    actions.front().subscription = &subscriptions.front();
-
+    tasks.push_front({ std::move(function), nullptr });
+    subscriptions.push_front({ tasks.begin(), false });
+    tasks.front().subscription = &subscriptions.front();
+    subscription = subscriptions.begin();
     unlock();
   } catch (...) {
     unlock();
     throw;
   };
 
-  if (thread && stop_) {
-    thread->join();
-    delete thread;
-    thread = nullptr;
+  if (stop && os_thread.joinable()) os_thread.join();
+
+  if (!os_thread.joinable()) {
+    stop = false;
+    os_thread = std::thread(&ThreadLoop::loop, this);
   };
 
-  if (!thread) {
-    stop_ = false;
-    thread = new std::thread(&ThreadLoop::loop, this);
-  };
-
-  return subscriptions.begin();
+  return subscription;
 };
 
 void ThreadLoop::loop() {
   std::unique_lock<std::mutex> lock(mutex);
   while (true) {
-    if (pause_) {
-      paused_ = true;
+    if (pause) {
+      paused = true;
       cv.notify_all();
-      cv.wait(lock, [this]() -> bool { return !pause_; });
-      paused_ = false;
+      cv.wait(lock, [this]() -> bool { return !pause; });
+      paused = false;
     };
 
-    if (stop_) return;
+    if (stop) return;
 
-    if (current == actions.end()) {
-      current = actions.begin();
-      if (current == actions.end()) return;
+    if (current == tasks.end()) {
+      current = tasks.begin();
+      if (current == tasks.end()) return;
     };
 
     lock.unlock();
     bool keep = current->function();
     lock.lock();
+
     if (keep)
       ++current;
     else {
       current->subscription->erased = true;
-      actions.erase(current++);
+      tasks.erase(current++);
     };
   };
 };
 
-void ThreadLoop::unsubscribe(ThreadLoop::handle handle) {
-  if (!handle->erased) {
+void ThreadLoop::remove(std::list<Subscription>::iterator subscription) {
+  if (!subscription->erased) {
+    auto task = subscription->task;
     lock();
     try {
-      if (current == handle->iterator && !paused_) {
-        pause_ = true;
+      if (current == task && !paused) {
+        pause = true;
         std::unique_lock<std::mutex> lock(mutex, std::adopt_lock);
-        cv.wait(lock, [this]() -> bool { return paused_; });
+        cv.wait(lock, [this]() -> bool { return paused; });
         lock.release();
       };
 
-      if (current == handle->iterator) ++current;
+      if (current == task) ++current;
 
-      actions.erase(handle->iterator);
+      tasks.erase(task);
 
       unlock();
     } catch (...) {
@@ -111,11 +99,7 @@ void ThreadLoop::unsubscribe(ThreadLoop::handle handle) {
     };
   };
 
-  subscriptions.erase(handle);
+  subscriptions.erase(subscription);
 
-  if (actions.empty() && thread) {
-    thread->join();
-    delete thread;
-    thread = nullptr;
-  };
+  if (tasks.empty() && os_thread.joinable()) os_thread.join();
 };
