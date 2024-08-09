@@ -82,7 +82,6 @@ static bool cfg_get_mask(
       else      mask &= ~bit;
     };
   };
-  fprintf(stderr, "cfg_get_mask %s => %x, %d\n", name.c_str(), mask, set);
   return set;
 };
 
@@ -290,22 +289,6 @@ void V1290::readout() {
   };
 };
 
-void V1290::readout_thread(Thread_args* arg) {
-  Thread* thread = static_cast<Thread*>(arg);
-  V1290& tool = thread->tool;
-  try {
-    tool.readout();
-  } catch (std::exception& e) {
-    *tool.m_log << tool.ML(0) << e.what() << std::endl;
-    thread->kill = true;
-  };
-};
-
-void V1290::run_readout() {
-  thread.reset(new Thread(*this));
-  util.CreateThread("V1290", &readout_thread, thread.get());
-};
-
 bool V1290::Initialise(std::string configfile, DataModel& data) {
   try {
     if (configfile != "") m_variables.Initialise(configfile);
@@ -332,7 +315,17 @@ bool V1290::Initialise(std::string configfile, DataModel& data) {
 bool V1290::Execute() {
   if (tdcs.empty()) return true;
   try {
-    run_readout();
+    thread = m_data->vme_readout.add(
+        [this]() -> bool {
+          try {
+            readout();
+            return true;
+          } catch (std::exception& e) {
+            *m_log << ML(0) << e.what() << std::endl;
+            return false;
+          }
+        }
+    );
     return true;
   } catch (std::exception& e) {
     *m_log << ML(0) << e.what() << std::endl;
@@ -342,10 +335,8 @@ bool V1290::Execute() {
 
 bool V1290::Finalise() {
   try {
-    if (thread) {
-      util.KillThread(thread.get());
-      delete thread.release();
-    };
+    if (thread.alive()) thread.terminate();
+
     tdcs.clear();
 
     return true;

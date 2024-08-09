@@ -6,7 +6,7 @@
 #include <caen++/v792.hpp>
 
 #include "Tool.h"
-#include "Utilities.h"
+#include "ThreadLoop.h"
 
 class V792: public ToolFramework::Tool {
   public:
@@ -15,24 +15,13 @@ class V792: public ToolFramework::Tool {
     bool Finalise();
 
   private:
-    struct Thread: public ToolFramework::Thread_args {
-      V792& tool;
-
-      Thread(V792& tool): tool(tool) {};
-    };
-
     std::vector<caen::V792> qdcs;
     caen::V792::Buffer buffer;
-    std::unique_ptr<Thread> thread;
-    ToolFramework::Utilities util;
+    ThreadLoop::Thread thread;
 
     void connect();
     void configure();
     void readout();
-
-    static void readout_thread(ToolFramework::Thread_args* arg);
-
-    void run_readout();
 };
 
 #endif
