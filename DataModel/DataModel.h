@@ -7,10 +7,10 @@
 
 #include <zmq.hpp>
 
-#include <caen++/v1290.hpp>
-#include <caen++/v792.hpp>
+//#include <caen++/v1290.hpp>
+//#include <caen++/v792.hpp>
 
-//#include "TTree.h"
+//#include "TTree.h"o
 
 #include "Store.h"
 #include "BoostStore.h"
@@ -22,7 +22,7 @@
 
 using namespace ToolFramework;
 
-/**
+/*o*
  * \class DataModel
  *
  * This class Is a transient data model class for your Tools within the ToolChain. If Tools need to comunicate they pass all data objects through the data model. There fore inter tool data objects should be deffined in this class. 
@@ -35,9 +35,9 @@ using namespace ToolFramework;
  */
 
 class DataModel : public DAQDataModelBase {
-
-
- public:
+  
+  
+public:
   
   DataModel(); ///< Simple constructor 
 
@@ -45,14 +45,25 @@ class DataModel : public DAQDataModelBase {
   //void AddTTree(std::string name,TTree *tree);
   //void DeleteTTree(std::string name,TTree *tree);
 
-  ThreadLoop vme_readout;
-
-  std::mutex v1290_mutex;
-  std::list<std::vector<caen::V1290::Packet>> v1290_readout;
-  std::mutex v792_mutex;
-  std::list<std::vector<caen::V792::Packet>> v792_readout;
+  //ThreadLoop vme_readout;
   
- private:
+  //  std::mutex v1290_mutex;
+  //std::list<std::vector<caen::V1290::Packet>> v1290_readout;
+  //std::mutex v792_mutex;
+  //std::list<std::vector<caen::V792::Packet>> v792_readout;
+  
+  bool load_config;
+  bool change_config;
+  bool run_start;
+  bool run_stop;
+  unsigned long start_time;
+  
+  JobQueue job_queue;
+  unsigned int thread_cap;
+  unsigned int thread_num;  
+  
+private:
+  
   
   //std::map<std::string,TTree*> m_trees; 
   

@@ -1,5 +1,10 @@
-///< Unity header to provide a clean Tool header list for factory and scripts ot add new Tools to
-#include "V1290.h"
-#include "V792.h"
-#include "V812.h"
-#include "Dumper.h"
+#include <Configuration.h>
+#include <DummyTool.h>
+#include <FileWriter.h>
+#include <LED.h>
+#include <Monitoring.h>
+#include <Nhits.h>
+#include <RunControl.h>
+#include <Trigger.h>
+#include "MPMT.h"
+#include "JobManager.h"
