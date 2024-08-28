@@ -19,6 +19,10 @@
 #include "SlowControlCollection.h"
 #include "DAQDataModelBase.h"
 #include "ThreadLoop.h"
+#include "WCTERawData.h"
+#include "DAQHeader.h"
+#include "WCTEMPMTPPS.h"
+
 
 using namespace ToolFramework;
 
@@ -60,7 +64,15 @@ public:
   
   JobQueue job_queue;
   unsigned int thread_cap;
-  unsigned int thread_num;  
+  unsigned int thread_num;
+
+  std::mutex unsorted_data_mtx;
+  std::map<unsigned int,std::vector<WCTEMPMTHit> > unsorted_mpmt_hits;
+  std::map<unsigned int,std::vector<WCTEMPMTLED> > unsorted_mpmt_leds;
+  std::map<unsigned int,std::vector<WCTEMPMTWaveform> > unsorted_mpmt_waveforms;
+  std::map<unsigned int,std::vector<WCTEMPMTPPS> > unsorted_mpmt_pps;
+  std::map<unsigned int,std::vector<WCTEMPMTHit> > unsorted_mpmt_triggers;
+
   
 private:
   
