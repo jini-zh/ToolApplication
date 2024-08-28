@@ -64,7 +64,7 @@ bool MPMT::Execute(){
 
 bool MPMT::Finalise(){
 
-  for(unsigned int i=0;i<args.size();i++) m_util->KillThread(args.at(i));
+  for(unsigned int i=0;i<args.size();i++) DeleteThread(0);
   
   args.clear();
   
@@ -103,9 +103,17 @@ void MPMT::CreateThread(){
  void MPMT::DeleteThread(unsigned int pos){
 
    m_util->KillThread(args.at(pos));
+
+   delete args.at(pos)->data_sock;
+   args.at(pos)->data_sock=0;
+
+   delete args.at(pos)->utils;
+   args.at(pos)->utils=0;
+   
    delete args.at(pos);
    args.at(pos)=0;
-   args.erase(args.begin()+(pos-1));
+   args.erase(args.begin()+(pos));
+   
 
  }
 
@@ -113,10 +121,19 @@ void MPMT::Thread(Thread_args* arg){
 
   MPMT_args* args=reinterpret_cast<MPMT_args*>(arg);
 
+  args->lapse = args->period -( boost::posix_time::microsec_clock::universal_time() - args->last);
+  
+  if( args->lapse.is_negative()){
+    unsigned short num_connections = args->connections.size();
+    if(args->utils->UpdateConnections("MPMT", args->data_sock, args->connections, args->data_port) > num_connections) args->m_data->services->SendLog("Info: New MPMT connected",4);
+    
+    args->last= boost::posix_time::microsec_clock::universal_time();
+  }
+  
   zmq::poll(&(args->items[0]), 1, 100);
   
   if(args->items[0].revents & ZMQ_POLLIN){
-
+    
     zmq::message_t identity;
     zmq::message_t* daq_header = new zmq::message_t;
     zmq::message_t* mpmt_data = new zmq::message_t;
@@ -126,17 +143,41 @@ void MPMT::Thread(Thread_args* arg){
     
     args->message_size=args->data_sock->recv(&identity);     
 
-    if(!identity.more() || args->message_size == 0);//{there has been an error}
+    if(!identity.more() || args->message_size == 0){
+      args->m_data->services->SendLog("Warning: MPMT thread identity has no size or only message",3);
+      delete mpmt_data;
+      mpmt_data=0;
+      delete daq_header;
+      daq_header=0;
+      return;
+    }
     
     args->message_size=args->data_sock->recv(daq_header);
     
-    if(args->message_size == 0); //{there has been an error}
+    if(args->message_size == 0){
+      args->m_data->services->SendLog("Warning: MPMT thread daq header has no size",3);
+      delete mpmt_data;
+      mpmt_data=0;
+      delete daq_header;
+      daq_header=0;
+      return;
+    }
     if(!daq_header->more()) args->no_data=true;
     else{
       args->message_size=args->data_sock->recv(mpmt_data);
-      if(!mpmt_data->more() || args->message_size == 0);//{there has been an error}
+      if(!mpmt_data->more() || args->message_size == 0){
+	args->m_data->services->SendLog("ERROR: MPMT thread too many message parts or no data, throwing away data",2);
+	zmq::message_t throwaway;
+	 args->message_size=args->data_sock->recv(&throwaway);
+	 while(throwaway.more()) args->message_size=args->data_sock->recv(&throwaway);
+	 delete mpmt_data;
+	 mpmt_data=0;
+	 delete daq_header;
+	 daq_header=0;
+	 return;
+      }
     }
-
+    
     zmq::message_t reply(sizeof(reply));
 
     memcpy(reply.data(), daq_header->data(), sizeof(reply));
@@ -144,25 +185,22 @@ void MPMT::Thread(Thread_args* arg){
     args->data_sock->send(identity, ZMQ_SNDMORE);
     args->data_sock->send(reply);
 
-    if(!args->no_data){
+    if(args->no_data){
+      delete mpmt_data;
+      mpmt_data=0;
+      delete daq_header;
+      daq_header=0;
+    }
+    else{
       Job* tmp_job= new Job("MPMT");
       MPMTMessages* tmp_msgs= new MPMTMessages;
       tmp_msgs->daq_header=daq_header;
       tmp_msgs->mpmt_data=mpmt_data;
       tmp_msgs->m_data=args->m_data;
       tmp_job->data= tmp_msgs;
-      tmp_job->func=ProcessData; // yeh forget fix thiso
+      tmp_job->func=ProcessData;
       args->job_queue->AddJob(tmp_job);
     }
-  }
-
-  
-  args->lapse = args->period -( boost::posix_time::microsec_clock::universal_time() - args->last);
-  
-  if( args->lapse.is_negative()){
-    
-    args->utils->UpdateConnections("MPMT", args->data_sock, args->connections, args->data_port);
-    args->last= boost::posix_time::microsec_clock::universal_time();
   }
   
 }
@@ -170,16 +208,16 @@ void MPMT::Thread(Thread_args* arg){
 
 
 bool MPMT::ProcessData(void* data){
-
+  
   MPMTMessages* msgs=reinterpret_cast<MPMTMessages*>(data);
-
+  
   DAQHeader* daq_header=reinterpret_cast<DAQHeader*>(msgs->daq_header->data());
   unsigned int bin= daq_header->GetCoarseCounter() >> 4; //might not be worth rounding
   unsigned short card_id = daq_header->GetCardID();
   unsigned short card_type = daq_header->GetCardType();
   unsigned long bits=msgs->mpmt_data->size()*8;
   unsigned long current_bit=0;
-
+  
   std::vector<WCTEMPMTHit> vec_mpmt_hit;
   std::vector<WCTEMPMTLED> vec_mpmt_led;
   std::vector<WCTEMPMTPPS> vec_mpmt_pps;
@@ -196,9 +234,9 @@ bool MPMT::ProcessData(void* data){
 	current_bit+=11;
 	vec_mpmt_hit.push_back(tmp);
       }
-
+      
       else if(((mpmt_data[current_bit] >> 2) & 0b00001111 ) == 1U){;}// its a pedistal (dont know) 
-
+      
       else if(((mpmt_data[current_bit] >> 2) & 0b00001111 ) == 2U){ // its LED
 	WCTEMPMTLED tmp(card_id, &mpmt_data[current_bit]);
 	current_bit+=9;
@@ -233,10 +271,9 @@ bool MPMT::ProcessData(void* data){
     msgs->m_data->unsorted_mpmt_pps[bin].insert( msgs->m_data->unsorted_mpmt_pps[bin].end(), vec_mpmt_pps.begin(), vec_mpmt_pps.end());
   }
   msgs->m_data->unsorted_data_mtx.unlock();
-
-
   
-
+  delete msgs;
+  msgs=0;
   
   return true;
   

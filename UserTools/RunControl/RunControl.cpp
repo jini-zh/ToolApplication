@@ -27,9 +27,9 @@ bool RunControl::Initialise(std::string configfile, DataModel &data){
   //  m_util->CreateThread("test", &Thread, args);
 
 
-  m_data->sc_vars.Add("RunStop",VARIABLE, std::bind(&RunControl::RunStop, this,  std::placeholders::_1));
+  m_data->sc_vars.Add("RunStop",BUTTON, std::bind(&RunControl::RunStop, this,  std::placeholders::_1));
   m_data->sc_vars["RunStop"]->SetValue(0);
-  m_data->sc_vars.Add("RunStart",BUTTON, std::bind(&RunControl::RunStart, this,  std::placeholders::_1));
+  m_data->sc_vars.Add("RunStart",VARIABLE, std::bind(&RunControl::RunStart, this,  std::placeholders::_1));
   m_data->sc_vars["RunStart"]->SetValue(0);  
   
   ExportConfiguration();
@@ -53,7 +53,8 @@ bool RunControl::Execute(){
     m_data->run_stop=true;
     m_run_stop=false;
   }
-  
+
+  usleep(100);
   return true;
 }
 
@@ -79,6 +80,8 @@ bool RunControl::Finalise(){
 
 std::string RunControl::RunStart(const char* key){
 
+  ////////////this blocking is no good and needs to be corrected. have to farm off the wait to the execture process.
+  
   m_data->load_config=true;
   unsigned int run_configuration=0;
   m_data->sc_vars["RunStart"]->GetValue(run_configuration);
