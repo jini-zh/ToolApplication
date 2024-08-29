@@ -145,6 +145,7 @@ void V1290::configure() {
     cfgfloat(search_margin);
     cfgfloat(reject_margin);
     cfgbool(trigger_time_subtraction);
+    cfgint(blt_event_number);
 
     if (cfg_get(m_variables, "edge_detection", tdc_index, s))
       if (s == "leading")
