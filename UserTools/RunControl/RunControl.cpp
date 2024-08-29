@@ -30,7 +30,9 @@ bool RunControl::Initialise(std::string configfile, DataModel &data){
   m_data->sc_vars.Add("RunStop",BUTTON, std::bind(&RunControl::RunStop, this,  std::placeholders::_1));
   m_data->sc_vars["RunStop"]->SetValue(0);
   m_data->sc_vars.Add("RunStart",VARIABLE, std::bind(&RunControl::RunStart, this,  std::placeholders::_1));
-  m_data->sc_vars["RunStart"]->SetValue(0);  
+  m_data->sc_vars["SubRunStart"]->SetValue(0);
+  m_data->sc_vars.Add("SubRunStart",BUTTON, std::bind(&RunControl::SubRun, this,  std::placeholders::_1));
+  m_data->sc_vars["SubRubStart"]->SetValue(0);
   
   ExportConfiguration();
   
@@ -40,10 +42,12 @@ bool RunControl::Initialise(std::string configfile, DataModel &data){
 
 bool RunControl::Execute(){
 
-  if(m_data->change_config) InitialiseConfiguration("");
+  if(m_data->change_config) InitialiseConfiguration();
 
   if(m_data->run_start) m_data->run_start=false;
   if(m_data->run_stop) m_data->run_stop=false;
+  if(m_data->sub_run) m_data->sub_run=false;
+  
   
   if(m_run_start){
     m_data->run_start=true;
@@ -53,7 +57,11 @@ bool RunControl::Execute(){
     m_data->run_stop=true;
     m_run_stop=false;
   }
+  if(m_new_sub_run) m_data->sub_run;
+  
 
+  //timer for new subrun
+  
   usleep(100);
   return true;
 }
@@ -111,6 +119,17 @@ std::string RunControl::RunStop(const char* key){
   m_data->sc_vars.AlertSend("RunStop");     
   m_run_stop=true;
  //update db stoptime in run table
+  
+
+  return "Run stopped";
+  
+}
+
+std::string RunControl::SubRun(const char* key){
+  
+  m_new_sub_run=true;     
+
+  //update db
   
 
   return "Run stopped";

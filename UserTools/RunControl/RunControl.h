@@ -51,12 +51,14 @@ class RunControl: public Tool {
   
   std::string RunStart(const char* key);
   std::string RunStop(const char* key);
+  std::string SubRun(const char* key);
 
   int m_config_update_time_sec;
 
   bool m_run_start;
   bool m_run_stop;
   unsigned long m_start_time;
+  bool m_new_sub_run;
   
 };
 
