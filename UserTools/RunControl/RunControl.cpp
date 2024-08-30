@@ -19,12 +19,15 @@ bool RunControl::Initialise(std::string configfile, DataModel &data){
 
   m_run_start=false;
   m_run_stop=false;
-  m_start_time=0;
+  m_start_time=&m_data->start_time;
   
-  //m_util=new Utilities();
-  //args=new RunControl_args();
+  m_util=new Utilities();
+  args=new RunControl_args();
+
+  args->start_time=&m_data->start_time;
+  args->current_coarse_counter=&m_data->current_coarse_counter;
   
-  //  m_util->CreateThread("test", &Thread, args);
+  m_util->CreateThread("test", &Thread, args);
 
 
   m_data->sc_vars.Add("RunStop",BUTTON, std::bind(&RunControl::RunStop, this,  std::placeholders::_1));
@@ -80,11 +83,16 @@ bool RunControl::Finalise(){
   return true;
 }
 
-//void RunControl::Thread(Thread_args* arg){
+void RunControl::Thread(Thread_args* arg){
+  
+  RunControl_args* args=reinterpret_cast<RunControl_args*>(arg);
+  
+  boost::posix_time::time_duration td = (boost::posix_time::microsec_clock::universal_time() - *(args->start_time));
 
-//  RunControl_args* args=reinterpret_cast<RunControl_args*>(arg);
+  *(args->current_coarse_counter)=td.total_milliseconds()*125000;
 
-//}
+  sleep(1);
+}
 
 std::string RunControl::RunStart(const char* key){
 
@@ -99,15 +107,16 @@ std::string RunControl::RunStart(const char* key){
   sleep(m_config_update_time_sec);
   while(m_data->change_config) sleep(5);
   
-  m_start_time= 1; // now + a min
-  json_payload="{\"Timestamp\":" + std::to_string(m_start_time) + "}";
+  *m_start_time= boost::posix_time::microsec_clock::universal_time() +  boost::posix_time::minutes(1); ///now+1min
+  unsigned long secs_since_epoch= boost::posix_time::time_duration(*m_start_time -  boost::posix_time::time_from_string("1970-01-01 00:00:00.000")).total_seconds();
+  json_payload="{\"Timestamp\":" + std::to_string(secs_since_epoch) + "}";
   m_data->sc_vars.AlertSend("RunStart");
-  time_t now = time(0);
-  struct tm y2k = {0};
-  tm utc = *gmtime(&now);
-  m_start_time= difftime(mktime(&utc),mktime(&y2k));
+  //time_t now = time(0);
+  //struct tm y2k = {0};
+  //tm utc = *gmtime(&now);
+  //*m_start_time= difftime(mktime(&utc),mktime(&y2k));
   //update DB start time;
-  m_data->start_time= m_start_time;
+								     //  m_data->start_time= *m_start_time;
   m_run_start=true;
 
   return "Run started at m_start_time";

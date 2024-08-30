@@ -8,3 +8,4 @@
 #include <Trigger.h>
 #include "MPMT.h"
 #include "JobManager.h"
+#include "MPMTfakeTrigger.h"

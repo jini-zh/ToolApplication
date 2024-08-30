@@ -10,7 +10,9 @@
 class DAQHeader{
 
 public:
-  DAQHeader(){std::fill(std::begin(data), std::end(data), 0);}
+  DAQHeader(){
+    std::fill(std::begin(data), std::end(data), 0);
+  }
   
   unsigned int GetMessageNumber(){return (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | (data[3]); }
   unsigned int GetCoarseCounter(){return (data[4] << 24) | (data[5] << 16) | (data[6] << 8) | (data[7]);}
@@ -21,7 +23,9 @@ public:
   bool GetDelayedPackets(){return ((data[11] & 0b00000010) >> 1 );}
   bool GetReserved(){return (data[11] & 0b00000001);}
   unsigned short GetVersion(){return data[12] ;}
-
+  static unsigned int GetSize(){return sizeof(data);}
+  unsigned char* GetData(){return data;}
+  
   void SetMessageNumber(unsigned int in){
     data[0] = in >> 24;
     data[1] = in >> 16;
@@ -43,7 +47,7 @@ public:
     data[9] = (data[9] & 0b11111100) | ((in >> 13) & 0b00000011);
     data[10] = in >> 5;
     data[11] = (data[11] & 0b00000111)  | ((in << 3) & 0b11111000);
-   }
+  }
   void SetPayloadEarly(bool in){ data[11] = (data[11] & 0b11111011) | ((in & 0b00000001) << 2);}
   void SetDelayedPackets(bool in){ data[11] = (data[11] & 0b11111101) | ((in & 0b00000001) << 1);}
   void SetReserved(bool in){ data[11] = (data[11] & 0b11111110) | (in & 0b00000001);}
@@ -59,10 +63,12 @@ public:
     std::cout<<" reserved = "<<GetReserved()<<std::endl;
     std::cout<<" version = "<<GetVersion()<<std::endl;
   }
+
   
 private:
-  
+
   unsigned char data[13];
+  
 
 };
 

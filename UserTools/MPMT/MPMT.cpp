@@ -79,7 +79,7 @@ void MPMT::CreateThread(){
   MPMT_args* tmparg=new MPMT_args();
  
   tmparg->data_sock=new zmq::socket_t(*(m_data->context), ZMQ_ROUTER);
-  
+  tmparg->data_port="4444";
   tmparg->utils= new DAQUtilities(m_data->context);
   
   tmparg->items[0].socket=*tmparg->data_sock;
@@ -91,6 +91,7 @@ void MPMT::CreateThread(){
   
   tmparg->last=boost::posix_time::microsec_clock::universal_time();
   tmparg->m_data=m_data;
+  tmparg->job_queue=&(m_data->job_queue);
   
   args.push_back(tmparg);
   std::stringstream tmp;
@@ -125,7 +126,7 @@ void MPMT::Thread(Thread_args* arg){
   
   if( args->lapse.is_negative()){
     unsigned short num_connections = args->connections.size();
-    if(args->utils->UpdateConnections("MPMT", args->data_sock, args->connections, args->data_port) > num_connections) args->m_data->services->SendLog("Info: New MPMT connected",4);
+    if(args->utils->UpdateConnections("MPMT", args->data_sock, args->connections, args->data_port) > num_connections) args->m_data->services->SendLog("Info: New MPMT connected",4); //add pmt id
     
     args->last= boost::posix_time::microsec_clock::universal_time();
   }
@@ -133,6 +134,7 @@ void MPMT::Thread(Thread_args* arg){
   zmq::poll(&(args->items[0]), 1, 100);
   
   if(args->items[0].revents & ZMQ_POLLIN){
+    //printf("received data\n");
     
     zmq::message_t identity;
     zmq::message_t* daq_header = new zmq::message_t;
@@ -154,8 +156,8 @@ void MPMT::Thread(Thread_args* arg){
     
     args->message_size=args->data_sock->recv(daq_header);
     
-    if(args->message_size == 0){
-      args->m_data->services->SendLog("Warning: MPMT thread daq header has no size",3);
+    if(args->message_size!=DAQHeader::GetSize() ){
+      args->m_data->services->SendLog("Warning: MPMT thread daq header has no or incorrect size",3);
       delete mpmt_data;
       mpmt_data=0;
       delete daq_header;
@@ -165,26 +167,29 @@ void MPMT::Thread(Thread_args* arg){
     if(!daq_header->more()) args->no_data=true;
     else{
       args->message_size=args->data_sock->recv(mpmt_data);
-      if(!mpmt_data->more() || args->message_size == 0){
-	args->m_data->services->SendLog("ERROR: MPMT thread too many message parts or no data, throwing away data",2);
+      if(mpmt_data->more() || args->message_size == 0){
+	args->m_data->services->SendLog("ERROR: MPMT thread too many message parts or no data, throwing away data",2); //add mpmtid
 	zmq::message_t throwaway;
-	 args->message_size=args->data_sock->recv(&throwaway);
-	 while(throwaway.more()) args->message_size=args->data_sock->recv(&throwaway);
-	 delete mpmt_data;
-	 mpmt_data=0;
-	 delete daq_header;
-	 daq_header=0;
-	 return;
+	if(mpmt_data->more()){
+	  args->message_size=args->data_sock->recv(&throwaway);
+	  while(throwaway.more()) args->message_size=args->data_sock->recv(&throwaway);
+	}
+	delete mpmt_data;
+	mpmt_data=0;
+	delete daq_header;
+	daq_header=0;
+	return;
       }
     }
-    
-    zmq::message_t reply(sizeof(reply));
-
+    //printf("data fine\n");
+	
+    zmq::message_t reply(4);
     memcpy(reply.data(), daq_header->data(), sizeof(reply));
-         
-    args->data_sock->send(identity, ZMQ_SNDMORE);
+    //printf("sending reply\n");
+    args->data_sock->send(identity, ZMQ_SNDMORE); /// need to add checking probablly a poll incase sender dies
     args->data_sock->send(reply);
-
+    //printf("sent reply\n");
+    
     if(args->no_data){
       delete mpmt_data;
       mpmt_data=0;
@@ -192,18 +197,22 @@ void MPMT::Thread(Thread_args* arg){
       daq_header=0;
     }
     else{
+      //printf("creating job\n");
       Job* tmp_job= new Job("MPMT");
       MPMTMessages* tmp_msgs= new MPMTMessages;
       tmp_msgs->daq_header=daq_header;
       tmp_msgs->mpmt_data=mpmt_data;
       tmp_msgs->m_data=args->m_data;
       tmp_job->data= tmp_msgs;
+      //printf("d1\n");
       tmp_job->func=ProcessData;
+      //printf("d2\n");
       args->job_queue->AddJob(tmp_job);
+      printf("job submitted %d\n",args->job_queue->size());
     }
   }
   
-}
+} //job deletion needed
 
 
 
@@ -215,66 +224,97 @@ bool MPMT::ProcessData(void* data){
   unsigned int bin= daq_header->GetCoarseCounter() >> 4; //might not be worth rounding
   unsigned short card_id = daq_header->GetCardID();
   unsigned short card_type = daq_header->GetCardType();
-  unsigned long bits=msgs->mpmt_data->size()*8;
-  unsigned long current_bit=0;
-  
+  unsigned long bytes=msgs->mpmt_data->size();
+  unsigned long current_byte=0;
+
+  //  daq_header->Print();
   std::vector<WCTEMPMTHit> vec_mpmt_hit;
   std::vector<WCTEMPMTLED> vec_mpmt_led;
   std::vector<WCTEMPMTPPS> vec_mpmt_pps;
   std::vector<WCTEMPMTWaveform> vec_mpmt_waveform;
   
   char* mpmt_data= reinterpret_cast<char*>(msgs->mpmt_data->data());
-
-  while(current_bit<bits)
-    
-    if((mpmt_data[current_bit] >> 6) == 1U){ //its a hit or led or pps
-      
-      if(((mpmt_data[current_bit] >> 2) & 0b00001111 ) == 0U){ // its normal mpmt hit
-	WCTEMPMTHit tmp(card_id, &mpmt_data[current_bit]);
-	current_bit+=11;
+  //printf("data size %d\n",msgs->mpmt_data->size());
+  
+  while(current_byte<bytes){
+    //printf("cuurent byte %d : %d\n",mpmt_data[current_byte], (mpmt_data[current_byte] >> 6));
+    //printf("(mpmt_data[current_byte] >> 6) == 0b1:%d\n", ((mpmt_data[current_byte] >> 6) == 0b1));
+    if((mpmt_data[current_byte] >> 6) == 0b1){ //its a hit or led or pps
+      //printf("in hit, led,pps \n");
+      if(((mpmt_data[current_byte] >> 2) & 0b00001111 ) == 0U && bytes-current_byte >= WCTEMPMTHit::GetSize()){ // its normal mpmt hit
+	//printf("in hit\n");
+	WCTEMPMTHit tmp(card_id, &mpmt_data[current_byte]);
+	current_byte+=WCTEMPMTHit::GetSize();
 	vec_mpmt_hit.push_back(tmp);
       }
       
-      else if(((mpmt_data[current_bit] >> 2) & 0b00001111 ) == 1U){;}// its a pedistal (dont know) 
+      //else if(((mpmt_data[current_byte] >> 2) & 0b00001111 ) == 1U ){
+	//printf("in ped \n");
+      //      }// its a pedistal (dont know) 
       
-      else if(((mpmt_data[current_bit] >> 2) & 0b00001111 ) == 2U){ // its LED
-	WCTEMPMTLED tmp(card_id, &mpmt_data[current_bit]);
-	current_bit+=9;
+      else if(((mpmt_data[current_byte] >> 2) & 0b00001111 ) == 2U && bytes-current_byte >= WCTEMPMTLED::GetSize()){// its LED
+	//printf("in led \n");
+	WCTEMPMTLED tmp(card_id, &mpmt_data[current_byte]);
+	current_byte+=WCTEMPMTLED::GetSize();
 	vec_mpmt_led.push_back(tmp);
       }
+      
+      //      else if(((mpmt_data[current_byte] >> 2) & 0b00001111 ) == 3U){
+	//printf("in calib \n");
+      //	}// its calib??
+      
+      else if(((mpmt_data[current_byte] >> 2) & 0b00001111 ) == 15U && bytes-current_byte >= WCTEMPMTPPS::GetSize() ){// its PPS
+	//printf("in pps\n");
+	WCTEMPMTPPS tmp(card_id, &mpmt_data[current_byte]);
+	current_byte+=WCTEMPMTPPS::GetSize();
+	vec_mpmt_pps.push_back(tmp);
+      }
+      else{
+	 msgs->m_data->services->SendLog("ERROR: MPMT data is courupt or of uknown structure",0);
+	return false;
 
-      else if(((mpmt_data[current_bit] >> 2) & 0b00001111 ) == 3U){;}// its calib??
-
-      else if(((mpmt_data[current_bit] >> 2) & 0b00001111 ) == 15U){// its PPS
-	  WCTEMPMTPPS tmp(card_id, &mpmt_data[current_bit]);
-	  current_bit+=17;
-	  vec_mpmt_pps.push_back(tmp);
       }
     }
-    else if ((mpmt_data[current_bit] >> 6) == 2U){ //its a waveform
-        WCTEMPMTWaveform tmp(card_id, &mpmt_data[current_bit]);
-	current_bit+= 10 + (tmp.header.GetNumSamples() * 12);
+    else if ((mpmt_data[current_byte] >> 6) == 2U && bytes-current_byte >= WCTEMPMTWaveformHeader::GetSize()){ //its a waveform
+      WCTEMPMTWaveform tmp(card_id, &mpmt_data[current_byte]);
+      current_byte+=  WCTEMPMTWaveformHeader::GetSize();
+      if(bytes-current_byte >= tmp.header.GetLength()){
+	tmp.samples.resize(tmp.header.GetLength());
+	memcpy(tmp.samples.data(), &mpmt_data[current_byte], tmp.header.GetLength());
+	current_byte+=(tmp.header.GetLength());
 	vec_mpmt_waveform.push_back(tmp);
+      }
     }
-
-
+    else{
+       msgs->m_data->services->SendLog("ERROR: MPMT data is courupt or of uknown structure",0);      
+      return false;
+      
+    }
+  }  
+    //printf("data processed \n");
+    
   msgs->m_data->unsorted_data_mtx.lock();
   if(card_type<2U){ //WCTEMPMT and buffered ADC
+    //printf("in send unsorted ADC\n");
     msgs->m_data->unsorted_mpmt_hits[bin].insert( msgs->m_data->unsorted_mpmt_hits[bin].end(), vec_mpmt_hit.begin(), vec_mpmt_hit.end());
     msgs->m_data->unsorted_mpmt_leds[bin].insert( msgs->m_data->unsorted_mpmt_leds[bin].end(), vec_mpmt_led.begin(), vec_mpmt_led.end());
     msgs->m_data->unsorted_mpmt_pps[bin].insert( msgs->m_data->unsorted_mpmt_pps[bin].end(), vec_mpmt_pps.begin(), vec_mpmt_pps.end());
     msgs->m_data->unsorted_mpmt_waveforms[bin].insert( msgs->m_data->unsorted_mpmt_waveforms[bin].end(), vec_mpmt_waveform.begin(), vec_mpmt_waveform.end());
+   //printf("unsorted ADC sent\n");
   }
   
   else if(card_type==3U){ //trigger card
+ //printf("in send unsorted triggercard\n");
     msgs->m_data->unsorted_mpmt_triggers[bin].insert( msgs->m_data->unsorted_mpmt_triggers[bin].end(), vec_mpmt_hit.begin(), vec_mpmt_hit.end());
     msgs->m_data->unsorted_mpmt_pps[bin].insert( msgs->m_data->unsorted_mpmt_pps[bin].end(), vec_mpmt_pps.begin(), vec_mpmt_pps.end());
+    //printf("unsorted triggercard sent\n");
   }
   msgs->m_data->unsorted_data_mtx.unlock();
-  
+
+  //printf("delete data\n");
   delete msgs;
   msgs=0;
-  
+  //printf("datadeleted all good\n");
   return true;
   
 }

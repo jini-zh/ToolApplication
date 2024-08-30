@@ -23,6 +23,10 @@ public:
   unsigned short GetSequenceNumber(){return ((data[2] & 0b00000011)  << 12 ) | (data[3] << 4 ) | ((data[4] & 0b11110000 ) >> 4 ) ;}
   unsigned int GetCoarseCounter(){ return ((data[4] & 0b00001111) << 28) | (data[5] << 20) | (data[6] << 12 ) | (data[7] << 4) | ((data[8] & 0b11110000 ) >> 4 ) ;}
   unsigned short GetReserved(){return (data[8] & 0b00001111);}
+  static unsigned int GetSize(){return sizeof(data);};
+  unsigned char* GetData(){return data;}  
+
+
   
   void SetCardID(unsigned short in){ card_id=in;}
   void SetHeader(unsigned short in){ data[0] = (data[0] & 0b00111111) | ((in & 0b00000011) << 6);}
@@ -62,7 +66,8 @@ public:
     std::cout<<" coarse_counter = "<<GetCoarseCounter()<<std::endl;
     std::cout<<" reserved = "<<GetReserved()<<std::endl;
   }
-  
+
+
 private:
 
   unsigned short card_id;

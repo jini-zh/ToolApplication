@@ -14,6 +14,7 @@ if (tool=="Nhits") ret=new Nhits;
 if (tool=="RunControl") ret=new RunControl;
 if (tool=="Trigger") ret=new Trigger;
 if (tool=="MPMT") ret=new MPMT;
-  if (tool=="JobManager") ret=new JobManager;
+if (tool=="JobManager") ret=new JobManager;
+  if (tool=="MPMTfakeTrigger") ret=new MPMTfakeTrigger;
 return ret;
 }

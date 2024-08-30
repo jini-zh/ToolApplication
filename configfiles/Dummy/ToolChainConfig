@@ -10,7 +10,7 @@ IO_Threads 1 		 # Number of threads for network traffic (~ 1/Gbps)
 
 ###### Logging #####
 log_interactive 1	# Interactive=cout; 0=false, 1= true
-log_local 1 		# Local = local file log; 0=false, 1= true
+log_local 0		# Local = local file log; 0=false, 1= true
 log_local_path ./log 	# file to store logs to if local is active
 log_remote 0   		# Remote= remote logging system "serservice_name Remote_Logging";  0=false, 1= true
 log_address 239.192.1.1 # Remote multicast address to send logs

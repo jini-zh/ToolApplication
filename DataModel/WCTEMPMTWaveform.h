@@ -27,7 +27,9 @@ public:
   unsigned short GetNumSamples(){return ((data[5] & 0b00011111) << 11 ) | (data[6] << 3) |  ((data[7] & 0b11100000) >> 5);}
   unsigned int GetLength(){ return ((data[7] & 0b00011111) << 12 ) | (data[8] << 4) |  ((data[9] & 0b11110000) >> 4); }
   unsigned short GetReserved(){return (data[9] & 0b00001111);}
-
+  static unsigned int GetSize(){return sizeof(data);};
+  unsigned char* GetData(){return data;}  
+  
   void SetCardID(unsigned short in){ card_id = in;}
   void SetHeader(unsigned short in){ data[0] = (data[0] & 0b00111111) | ((in & 0b00000011) << 6);}
   void SetFlags(unsigned short in){ data[0] = (data[0] & 0b11000011) | ((in & 0b00001111) << 2);}
@@ -65,11 +67,11 @@ public:
     
   }
   
-  unsigned char data[10];
   
 private:
 
   unsigned short card_id;
+  unsigned char data[10];
   
 };
 
@@ -90,7 +92,7 @@ public:
   WCTEMPMTWaveform(unsigned short& in_card_id, char* in_data){
     samples.clear();
     header.SetCardID(in_card_id);
-    memcpy(&header.data[0], in_data, sizeof(header.data));
+    memcpy(header.GetData(), in_data, sizeof(header.GetSize()));
     samples.resize(header.GetNumSamples());
     memcpy(samples.data(), (in_data+10), sizeof(samples.data())); //pretty sure this wont work
   }

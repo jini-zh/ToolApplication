@@ -29,6 +29,10 @@ bool FileWriter::Initialise(std::string configfile, DataModel &data){
 
 bool FileWriter::Execute(){
 
+ if(m_data->change_config) InitialiseConfiguration();
+    if(m_data->run_start)
+        if(m_data->run_stop)
+  
   return true;
 }
 

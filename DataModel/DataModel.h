@@ -60,7 +60,10 @@ public:
   bool change_config;
   bool run_start;
   bool run_stop;
-  unsigned long start_time;
+  bool sub_run;
+  boost::posix_time::ptime start_time;
+  unsigned long current_coarse_counter;
+  
   
   JobQueue job_queue;
   unsigned int thread_cap;
@@ -72,6 +75,8 @@ public:
   std::map<unsigned int,std::vector<WCTEMPMTWaveform> > unsorted_mpmt_waveforms;
   std::map<unsigned int,std::vector<WCTEMPMTPPS> > unsorted_mpmt_pps;
   std::map<unsigned int,std::vector<WCTEMPMTHit> > unsorted_mpmt_triggers;
+
+  std::deque<ReadoutWindow*> readout_windows;
 
   
 private:

@@ -19,6 +19,8 @@ public:
   unsigned short GetReserved(){return (data[0] & 0b00000011); }
   unsigned long GetPreviousPPSCoarseCounter(){ return (((unsigned long)data[1]) << 56) | (((unsigned long)data[2]) << 48) | (((unsigned long)data[3]) << 40) | (((unsigned long)data[4]) << 32) | (data[5] << 24) | (data[6] << 16) | (data[7] << 8) | data[8]; }
   unsigned long GetCurrentPPSCoarseCounter(){return (((unsigned long)data[9]) << 56) | (((unsigned long)data[10]) << 48) | (((unsigned long)data[11]) << 40) | (((unsigned long)data[12]) << 32) | (data[13] << 24) | (data[14] << 16) | (data[15] << 8) | data[16];  }
+  static unsigned int GetSize(){return sizeof(data);};
+  unsigned char* GetData(){return data;}  
 
   void SetCardID(unsigned short in){ card_id=in;}
   void SetHeader(unsigned short in){ data[0] = (data[0] & 0b00111111) | ((in & 0b00000011) << 6);}
@@ -53,12 +55,14 @@ public:
     std::cout<<" current_PPS_coarse_counter = "<<GetCurrentPPSCoarseCounter()<<std::endl;
     
   }
+
   
 private:
 
   unsigned short card_id;
   unsigned char data[17];
 
+  
 };
 
 

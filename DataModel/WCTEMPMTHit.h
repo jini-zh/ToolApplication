@@ -22,6 +22,8 @@ public:
   unsigned short GetFineTime(){return (data[6] << 8) | (data[7]);}
   unsigned short GetCharge(){return (data[8] << 8 ) | data[9] ;}
   unsigned short GetQualityFactor(){return data[10];}
+  static unsigned int GetSize(){return sizeof(data);};
+  unsigned char* GetData(){return data;}  
 
   void SetCardID(unsigned short in){ card_id=in;}
   void SetHeader(unsigned short in){ data[0] = (data[0] & 0b00111111) | ((in & 0b00000011) << 6);}
@@ -56,12 +58,13 @@ public:
     std::cout<<" charge = "<<GetCharge()<<std::endl;
     std::cout<<" quality_factor = "<<GetQualityFactor()<<std::endl;
   }
-  
+
+
 private:
 
   unsigned short card_id;
   unsigned char data[11];
-
+  
 };
 
 
