@@ -10,10 +10,8 @@ ifeq ($(MAKECMDGOALS),debug)
 CXXFLAGS+= -O0 -g -lSegFault -rdynamic -DDEBUG
 endif
 
-DataModelInclude =
-#-I $(Dependencies)
-DataModelLib =
-#-L $(Dependencies)/caen++ -lcaen++ -lCAENDigitizer
+DataModelInclude = -I $(Dependencies)/caen/include
+DataModelLib = -L $(Dependencies)/caen/lib -lcaen++ -lCAENComm
 
 MyToolsInclude =
 MyToolsLib =
