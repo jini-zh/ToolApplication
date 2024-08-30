@@ -294,19 +294,20 @@ bool MPMT::ProcessData(void* data){
     //printf("data processed \n");
     
   msgs->m_data->unsorted_data_mtx.lock();
+  if(msgs->m_data->unsorted_data.count(bin)==0) msgs->m_data->unsorted_data[bin]=new UnsortedData();
   if(card_type<2U){ //WCTEMPMT and buffered ADC
     //printf("in send unsorted ADC\n");
-    msgs->m_data->unsorted_mpmt_hits[bin].insert( msgs->m_data->unsorted_mpmt_hits[bin].end(), vec_mpmt_hit.begin(), vec_mpmt_hit.end());
-    msgs->m_data->unsorted_mpmt_leds[bin].insert( msgs->m_data->unsorted_mpmt_leds[bin].end(), vec_mpmt_led.begin(), vec_mpmt_led.end());
-    msgs->m_data->unsorted_mpmt_pps[bin].insert( msgs->m_data->unsorted_mpmt_pps[bin].end(), vec_mpmt_pps.begin(), vec_mpmt_pps.end());
-    msgs->m_data->unsorted_mpmt_waveforms[bin].insert( msgs->m_data->unsorted_mpmt_waveforms[bin].end(), vec_mpmt_waveform.begin(), vec_mpmt_waveform.end());
+    msgs->m_data->unsorted_data[bin]->unsorted_mpmt_hits.insert( msgs->m_data->unsorted_data[bin]->unsorted_mpmt_hits.end(), vec_mpmt_hit.begin(), vec_mpmt_hit.end());
+    msgs->m_data->unsorted_data[bin]->unsorted_mpmt_leds.insert( msgs->m_data->unsorted_data[bin]->unsorted_mpmt_leds.end(), vec_mpmt_led.begin(), vec_mpmt_led.end());
+    msgs->m_data->unsorted_data[bin]->unsorted_mpmt_pps.insert( msgs->m_data->unsorted_data[bin]->unsorted_mpmt_pps.end(), vec_mpmt_pps.begin(), vec_mpmt_pps.end());
+    msgs->m_data->unsorted_data[bin]->unsorted_mpmt_waveforms.insert( msgs->m_data->unsorted_data[bin]->unsorted_mpmt_waveforms.end(), vec_mpmt_waveform.begin(), vec_mpmt_waveform.end());
    //printf("unsorted ADC sent\n");
   }
   
   else if(card_type==3U){ //trigger card
  //printf("in send unsorted triggercard\n");
-    msgs->m_data->unsorted_mpmt_triggers[bin].insert( msgs->m_data->unsorted_mpmt_triggers[bin].end(), vec_mpmt_hit.begin(), vec_mpmt_hit.end());
-    msgs->m_data->unsorted_mpmt_pps[bin].insert( msgs->m_data->unsorted_mpmt_pps[bin].end(), vec_mpmt_pps.begin(), vec_mpmt_pps.end());
+    msgs->m_data->unsorted_data[bin]->unsorted_mpmt_triggers.insert( msgs->m_data->unsorted_data[bin]->unsorted_mpmt_triggers.end(), vec_mpmt_hit.begin(), vec_mpmt_hit.end());
+    msgs->m_data->unsorted_data[bin]->unsorted_mpmt_pps.insert( msgs->m_data->unsorted_data[bin]->unsorted_mpmt_pps.end(), vec_mpmt_pps.begin(), vec_mpmt_pps.end());
     //printf("unsorted triggercard sent\n");
   }
   msgs->m_data->unsorted_data_mtx.unlock();
