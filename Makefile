@@ -53,7 +53,7 @@ src/%.o :  src/%.cpp
 	@echo -e "\e[38;5;214m\n*************** Making " $@ "****************\e[0m"
 	g++ $(CXXFLAGS) -c $< -o $@ $(Includes) $(DataModelInclude)
 
-UserTools/Factory/Factory.o :  UserTools/Factory/Factory.cpp  $(DataModelHEADERS)
+UserTools/Factory/Factory.o :  UserTools/Factory/Factory.cpp  $(DataModelHEADERS) $(MyToolHEADERS)
 	@echo -e "\e[38;5;214m\n*************** Making " $@ "****************\e[0m"
 	g++ $(CXXFLAGS) -c $< -o $@ $(Includes) $(DataModelInclude) $(ToolsInclude)
 
