@@ -64,6 +64,9 @@ public:
   bool sub_run;
   boost::posix_time::ptime start_time;
   unsigned long current_coarse_counter;
+
+  unsigned long run_number;
+  unsigned long sub_run_number;
   
   
   JobQueue job_queue;
@@ -72,8 +75,9 @@ public:
 
   std::mutex unsorted_data_mtx;
   std::map<unsigned long, UnsortedData*> unsorted_data; 
-  
-  std::deque<ReadoutWindow*> readout_windows;
+
+  std::mutex readout_windows_mtx;
+  std::deque<ReadoutWindow*>* readout_windows;
 
   
 private:

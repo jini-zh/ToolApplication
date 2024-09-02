@@ -1,8 +1,44 @@
 #include "MPMT.h"
 
-MPMT_args::MPMT_args():Thread_args(){}
+MPMTMessages::MPMTMessages(){
+  daq_header=0;
+  mpmt_data=0;
+  m_data=0;
+}
 
-MPMT_args::~MPMT_args(){}
+MPMTMessages::~MPMTMessages(){
+  delete daq_header;
+  daq_header=0;
+  delete mpmt_data;
+  mpmt_data=0;
+  m_data=0;
+  
+}
+
+MPMT_args::MPMT_args():Thread_args(){
+  data_sock=0;
+  utils=0;
+  job_queue=0;
+  m_data=0;
+
+}
+
+MPMT_args::~MPMT_args(){
+  delete data_sock;
+  data_sock=0;
+  delete utils;
+  utils=0;
+
+  for(std::map<std::string,Store*>::iterator it=connections.begin(); it!= connections.end(); it++){
+    delete it->second;
+    it->second=0;
+  }
+
+  connections.clear();
+  job_queue=0;
+  m_data=0;
+  
+}
 
 
 MPMT::MPMT():Tool(){}
@@ -18,6 +54,9 @@ bool MPMT::Initialise(std::string configfile, DataModel &data){
 
   m_util=new Utilities();
 
+  //laod port number maybe
+  //load rounding of bins masybe
+  
   m_threadnum=0;
   CreateThread();
   

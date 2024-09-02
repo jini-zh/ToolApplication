@@ -21,6 +21,9 @@ struct MPMTfakeTrigger_args:Thread_args{
   MPMTfakeTrigger_args();
   ~MPMTfakeTrigger_args();
   DataModel* data;
+  boost::posix_time::time_duration period;
+  boost::posix_time::ptime last;
+  boost::posix_time::time_duration lapse;
   
 };
 

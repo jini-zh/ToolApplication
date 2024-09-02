@@ -10,14 +10,8 @@
 
 struct MPMTMessages{
 
-  MPMTMessages(){;}
-  ~MPMTMessages(){
-    delete daq_header;
-    daq_header=0;
-    delete mpmt_data;
-    mpmt_data=0;
-    m_data=0;
-  }
+  MPMTMessages();
+  ~MPMTMessages();
   zmq::message_t* daq_header;
   zmq::message_t* mpmt_data;
   DataModel* m_data;

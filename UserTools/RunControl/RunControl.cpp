@@ -1,6 +1,10 @@
 #include "RunControl.h"
 
-RunControl_args::RunControl_args():Thread_args(){}
+RunControl_args::RunControl_args():Thread_args(){
+  start_time=0;
+  current_coarse_counter=0;
+  
+}
 
 RunControl_args::~RunControl_args(){}
 
@@ -14,21 +18,24 @@ bool RunControl::Initialise(std::string configfile, DataModel &data){
   InitialiseConfiguration(configfile);
   //m_variables.Print();
 
+
+  //put this in a load config funciton
   if(!m_variables.Get("verbose",m_verbose)) m_verbose=1;
   if(!m_variables.Get("config_update_time_sec",m_config_update_time_sec)) m_config_update_time_sec=300;
 
   m_run_start=false;
   m_run_stop=false;
   m_start_time=&m_data->start_time;
+
+  m_period=boost::posix_time::hours(12);
   
   m_util=new Utilities();
   args=new RunControl_args();
 
   args->start_time=&m_data->start_time;
   args->current_coarse_counter=&m_data->current_coarse_counter;
-  
+ 
   m_util->CreateThread("test", &Thread, args);
-
 
   m_data->sc_vars.Add("RunStop",BUTTON, std::bind(&RunControl::RunStop, this,  std::placeholders::_1));
   m_data->sc_vars["RunStop"]->SetValue(0);
@@ -62,23 +69,26 @@ bool RunControl::Execute(){
   }
   if(m_new_sub_run) m_data->sub_run;
   
+  lapse = m_period -( boost::posix_time::microsec_clock::universal_time() - (*m_start_time));
+  if(lapse.is_negative()) SubRun("");
 
-  //timer for new subrun
-  
   usleep(100);
+     
   return true;
 }
 
 
 bool RunControl::Finalise(){
 
-  //  m_util->KillThread(args);
+  m_util->KillThread(args);
 
-  //delete args;
-  //args=0;
+  delete args;
+  args=0;
 
-  //  delete m_util;
-  //m_util=0;
+  delete m_util;
+  m_util=0;
+
+  m_start_time=0;
 
   return true;
 }
@@ -91,7 +101,8 @@ void RunControl::Thread(Thread_args* arg){
 
   *(args->current_coarse_counter)=td.total_milliseconds()*125000;
 
-  sleep(1);
+  usleep(1000);
+  
 }
 
 std::string RunControl::RunStart(const char* key){
@@ -101,7 +112,9 @@ std::string RunControl::RunStart(const char* key){
   m_data->load_config=true;
   unsigned int run_configuration=0;
   m_data->sc_vars["RunStart"]->GetValue(run_configuration);
+
   //add new db entry to run table
+
   std::string json_payload="{\"RunConfig\":" + std::to_string(run_configuration) + "}";
   m_data->sc_vars.AlertSend("ChangeConfig", json_payload);
   sleep(m_config_update_time_sec);
@@ -139,7 +152,7 @@ std::string RunControl::SubRun(const char* key){
   m_new_sub_run=true;     
 
   //update db
-  
+  //update local variable and start time
 
   return "Run stopped";
   
