@@ -6,10 +6,10 @@
 
 void V792::connect() {
   auto connections = caen_connections(m_variables);
-  qdcs.reserve(connections.size());
+  boards.reserve(connections.size());
   for (auto& connection : connections) {
     caen_report_connection(*m_log << ML(3), "V792", connection);
-    qdcs.emplace_back(connection);
+    boards.emplace_back(Board { caen::V792(connection) });
   };
 };
 
@@ -27,8 +27,10 @@ static bool cfg_get(
 
 void V792::configure() {
   *m_log << ML(3) << "Configuring V792... " << std::flush;
-  for (int qdc_index = 0; qdc_index < qdcs.size(); ++qdc_index) {
-    caen::V792& qdc = qdcs[qdc_index];
+
+  for (int qdc_index = 0; qdc_index < boards.size(); ++qdc_index) {
+    Board& board = boards[qdc_index];
+    caen::V792& qdc = board.qdc;
     qdc.reset();
     qdc.clear();
 
@@ -85,31 +87,24 @@ void V792::configure() {
     cfgint(current_pedestal);
     cfgint(slide_constant);
 
-    {
-      uint32_t mask = 0;
-      bool mask_set = false;
-      if (cfg_get(m_variables, "enable_channels", qdc_index, s)) {
-        size_t j;
-        mask = std::stol(s, &j, 16);
-        mask_set = true;
-        if (j != s.size())
-          throw std::runtime_error(
-              std::string("V792: invalid value for enable_channels: ") + s
-          );
-      };
-
-      std::stringstream ss;
-      for (uint8_t channel = 0; channel < 32; ++channel) {
-        ss.str({});
-        ss << "channel_" << static_cast<int>(channel) << "_threshold";
-        if (cfg_get(m_variables, ss.str(), qdc_index, i))
-          if (mask_set)
-            qdc.set_channel_settings(channel, i, mask & 1 << channel);
-          else
-            qdc.set_channel_threshold(channel, i);
-        else if (mask_set)
-          qdc.set_channel_enabled(channel, mask & 1 << channel);
-      };
+    uint32_t mask = 0xFFFFFFFF;
+    if (cfg_get(m_variables, "enable_channels", qdc_index, s)) {
+      size_t j;
+      mask = std::stol(s, &j, 16);
+      if (j != s.size())
+        throw std::runtime_error(
+            std::string("V792: invalid value for enable_channels: ") + s
+        );
+    };
+    std::stringstream ss;
+    for (uint8_t channel = 0; channel < 32; ++channel) {
+      ss.str({});
+      ss << "channel_" << static_cast<int>(channel) << "_threshold";
+      bool enable = mask & 1 << channel;
+      if (cfg_get(m_variables, ss.str(), qdc_index, i))
+        qdc.set_channel_settings(channel, i, enable);
+      else
+        qdc.set_channel_enabled(channel, enable);
     };
 #undef cfgint
 #undef cfgbool
@@ -119,90 +114,79 @@ void V792::configure() {
   *m_log << ML(3) << "success" << std::endl;
 };
 
-void V792::readout() {
-  for (auto& qdc : qdcs) {
-    qdc.readout_wa(buffer);
+void V792::init(unsigned& nboards) {
+  connect();
+  configure();
+  nboards = boards.size();
+};
 
-    // Find the first Invalid packet, or skip to the end of the buffer
-    // TODO: move it to the processing tool
-    uint32_t n = buffer.size();
-    if (n > 0 && buffer[n-1].type() == caen::V792::Packet::Invalid)
-      if (buffer[0].type() == caen::V792::Packet::Invalid)
-        n = 0;
-      else {
-        // binary search
-        uint32_t m = 0;
-        while (n - m > 1) {
-          uint32_t k = (n + m) / 2;
-          if (buffer[k].type() == caen::V792::Packet::Invalid)
-            n = k;
-          else
-            m = k;
-        };
+void V792::fini() {
+  boards.clear();
+};
+
+void V792::readout(unsigned qdc_index, std::vector<caen::V792::Packet>& data) {
+  boards[qdc_index].qdc.readout_wa(buffer);
+
+  // Find the first Invalid packet, or skip to the end of the buffer
+  // TODO: move it to process?
+  uint32_t n = buffer.size();
+  if (n > 0 && buffer[n-1].type() == caen::V792::Packet::Invalid)
+    if (buffer[0].type() == caen::V792::Packet::Invalid)
+      n = 0;
+    else {
+      // binary search
+      uint32_t m = 0;
+      while (n - m > 1) {
+        uint32_t k = (n + m) / 2;
+        if (buffer[k].type() == caen::V792::Packet::Invalid)
+          n = k;
+        else
+          m = k;
       };
+    };
 
-    if (n == 0) continue;
-
-    std::vector<caen::V792::Packet> data(buffer.begin(), buffer.begin() + n);
-
-    std::lock_guard<std::mutex> lock(m_data->v792_mutex);
-    m_data->v792_readout.push_back(std::move(data));
-  };
+  data.insert(data.end(), buffer.begin(), buffer.begin() + n);
 };
 
-bool V792::Initialise(std::string configfile, DataModel& data) {
-  try {
-    if (configfile != "") m_variables.Initialise(configfile);
+void V792::process(
+    size_t                                  cycle,
+    const std::function<Event& (uint32_t)>& get_event,
+    unsigned                                qdc_index,
+    std::vector<caen::V792::Packet>         qdc_data
+) {
+  if (qdc_data.empty()) return;
 
-    m_data = &data;
-    m_log  = m_data->Log;
+  if (qdc_data.front().type() != caen::V792::Packet::Header)
+    // should never happen
+    throw std::runtime_error("QDC: unexpected packet");
 
-    if (!m_variables.Get("verbose", m_verbose)) m_verbose = 1;
+  Board& board = boards[qdc_index];
 
-    connect();
-    configure();
+  std::vector<caen::V792::Packet>::iterator pheader;
+  for (auto packet = qdc_data.begin(); packet != qdc_data.end(); ++packet)
+    switch (packet->type()) {
+      case caen::V792::Packet::Header:
+        pheader = packet;
+        break;
 
-    return true;
+      case caen::V792::Packet::EndOfBlock: {
+        Event& event = get_event(packet->as<caen::V792::EndOfBlock>().event());
 
-  } catch (std::exception& e) {
-    if (m_log)
-      *m_log << ML(0) << e.what() << std::endl;
-    else
-      fprintf(stderr, "%s\n", e.what());
-    return false;
-  };
+        auto ptrailer = packet;
+        for (packet = pheader + 1; packet != ptrailer; ++packet)
+          if (packet->type() == caen::V792::Packet::Data)
+            event.push_back(QDCHit(*pheader, *packet, *ptrailer));
+
+        break;
+      };
+    };
 };
 
-bool V792::Execute() {
-  if (qdcs.empty()) return true;
-  try {
-    thread = m_data->vme_readout.add(
-      [this]() -> bool {
-        try {
-          readout();
-          return true;
-        } catch (std::exception& e) {
-          *m_log << ML(0) << e.what() << std::endl;
-          return false;
-        }
-      }
-    );
-    return true;
-  } catch (std::exception& e) {
-    *m_log << ML(0) << e.what() << std::endl;
-    return false;
-  };
-};
-
-bool V792::Finalise() {
-  try {
-    if (thread.alive()) thread.terminate();
-
-    qdcs.clear();
-
-    return true;
-  } catch (std::exception& e) {
-    *m_log << ML(0) << e.what() << std::endl;
-    return false;
-  };
+void V792::submit(
+    std::map<uint32_t, Event>::iterator begin,
+    std::map<uint32_t, Event>::iterator end
+) {
+  std::lock_guard<std::mutex> readout_lock(m_data->v792_mutex);
+  for (auto event = begin; event != end; ++event)
+    m_data->v792_readout.push_back(std::move(event->second));
 };

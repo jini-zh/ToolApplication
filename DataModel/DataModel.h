@@ -25,6 +25,9 @@
 #include "UnsortedData.h"
 
 
+#include "TDCHit.h"
+#include "QDCHit.h"
+
 using namespace ToolFramework;
 
 /*o*
@@ -53,9 +56,10 @@ public:
   ThreadLoop vme_readout;
   
   std::mutex v1290_mutex;
-  std::list<std::vector<caen::V1290::Packet>> v1290_readout;
+  std::deque<std::deque<TDCHit>> v1290_readout;
+
   std::mutex v792_mutex;
-  std::list<std::vector<caen::V792::Packet>> v792_readout;
+  std::deque<std::deque<QDCHit>> v792_readout;
   
   bool load_config;
   bool change_config;

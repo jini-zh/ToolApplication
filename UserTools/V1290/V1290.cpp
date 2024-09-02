@@ -4,12 +4,34 @@
 #include "V1290.h"
 #include "caen.h"
 
+void V1290::RawEvent::merge(RawEvent& event, bool tail) {
+  if (tail)
+    trailer = event.trailer;
+  else
+    header  = event.header;
+  if (ettt == 0) ettt = event.ettt;
+  memcpy(hits + nhits, event.hits, event.nhits * sizeof(*hits));
+  nhits += event.nhits;
+};
+
+bool V1290::chop_event(size_t cycle, RawEvent& event, bool head) {
+  std::lock_guard<std::mutex> lock(chops_mutex);
+  auto pevent = chops.lower_bound(cycle);
+  if (pevent == chops.end() || pevent->first != cycle) {
+    chops.insert(pevent, { cycle, event });
+    return false;
+  };
+  event.merge(pevent->second, head);
+  chops.erase(pevent);
+  return true;
+};
+
 void V1290::connect() {
   auto connections = caen_connections(m_variables);
-  tdcs.reserve(connections.size());
+  boards.reserve(connections.size());
   for (auto& connection : connections) {
     caen_report_connection(*m_log << ML(3), "V1290", connection);
-    tdcs.emplace_back(connection);
+    boards.emplace_back(Board { caen::V1290(connection) });
   };
 };
 
@@ -108,8 +130,10 @@ static inline void apply_adjusts(
 
 void V1290::configure() {
   *m_log << ML(3) << "Configuring V1290... " << std::flush;
-  for (int tdc_index = 0; tdc_index < tdcs.size(); ++tdc_index) {
-    caen::V1290& tdc = tdcs[tdc_index];
+
+  for (int tdc_index = 0; tdc_index < boards.size(); ++tdc_index) {
+    Board& board = boards[tdc_index];
+    caen::V1290& tdc = board.tdc;
     tdc.reset();
     sleep(1); // the board takes approximately 1 second to reset
 
@@ -206,8 +230,9 @@ void V1290::configure() {
 
     cfgint(fifo_size);
 
-    if (cfg_get_mask(m_variables, "enable_channel", tdc_index, mask))
-      tdc.enable_channels(mask);
+    mask = 0xFFFFFFFF;
+    cfg_get_mask(m_variables, "enable_channel", tdc_index, mask);
+    tdc.enable_channels(mask);
 
     {
       std::vector<std::string> tdc_channels;
@@ -278,71 +303,114 @@ void V1290::configure() {
   *m_log << ML(3) << "success" << std::endl;
 };
 
-void V1290::readout() {
-  for (auto& tdc : tdcs) {
-    tdc.readout(buffer);
-    if (buffer.empty()) continue;
-
-    std::vector<caen::V1290::Packet> data(buffer.begin(), buffer.end());
-
-    std::lock_guard<std::mutex> lock(m_data->v1290_mutex);
-    m_data->v1290_readout.push_back(std::move(data));
-  };
+void V1290::init(unsigned& nboards) {
+  connect();
+  configure();
+  nboards = boards.size();
 };
 
-bool V1290::Initialise(std::string configfile, DataModel& data) {
-  try {
-    if (configfile != "") m_variables.Initialise(configfile);
-
-    m_data = &data;
-    m_log  = m_data->Log;
-
-    if (!m_variables.Get("verbose", m_verbose)) m_verbose = 1;
-
-    connect();
-    configure();
-
-    return true;
-
-  } catch (std::exception& e) {
-    if (m_log)
-      *m_log << ML(0) << e.what() << std::endl;
-    else
-      fprintf(stderr, "%s\n", e.what());
-    return false;
-  };
+void V1290::fini() {
+  boards.clear();
+  chops.clear();
 };
 
-bool V1290::Execute() {
-  if (tdcs.empty()) return true;
-  try {
-    thread = m_data->vme_readout.add(
-        [this]() -> bool {
-          try {
-            readout();
-            return true;
-          } catch (std::exception& e) {
-            *m_log << ML(0) << e.what() << std::endl;
-            return false;
-          }
-        }
+void V1290::process(
+    size_t                                  cycle,
+    const std::function<Event& (uint32_t)>& get_event,
+    unsigned                                tdc_index,
+    std::vector<caen::V1290::Packet>        tdc_data
+) {
+  if (tdc_data.empty()) return;
+
+  Board& board = boards[tdc_index];
+
+  RawEvent event;
+  event.ettt  = 0;
+  event.nhits = 0;
+
+  auto packet = tdc_data.begin();
+  bool chop = false;
+  for (; packet != tdc_data.end(); ++packet)
+    switch (packet->type()) {
+      case caen::V1290::Packet::GlobalHeader:
+        event.header = packet->as<caen::V1290::GlobalHeader>();
+        event.ettt   = 0;
+        event.nhits  = 0;
+        chop = true;
+        break;
+
+      case caen::V1290::Packet::TDCError:
+        report_error(tdc_index, packet->as<caen::V1290::TDCError>());
+        break;
+
+      case caen::V1290::Packet::ExtendedTriggerTimeTag:
+        event.ettt = packet->as<caen::V1290::ExtendedTriggerTimeTag>();
+        break;
+
+      case caen::V1290::Packet::TDCMeasurement:
+        event.hits[event.nhits++] = packet->as<caen::V1290::TDCMeasurement>();
+        break;
+
+      case caen::V1290::Packet::GlobalTrailer:
+        if (chop || chop_event(cycle, event, false))
+          process(board, get_event, event);
+        chop = false;
+        break;
+    };
+
+  if (chop && chop_event(cycle + 1, event, true))
+    process(board, get_event, event);
+};
+
+void V1290::process(
+    Board& board,
+    const std::function<Event& (uint32_t)>& get_event,
+    RawEvent& raw_event
+) {
+  Event& event = get_event(raw_event.header.event());
+  for (int h = 0; h < raw_event.nhits; ++h)
+    event.push_back(
+        TDCHit(
+          raw_event.header,
+          raw_event.hits[h],
+          raw_event.ettt,
+          raw_event.trailer
+        )
     );
-    return true;
-  } catch (std::exception& e) {
-    *m_log << ML(0) << e.what() << std::endl;
-    return false;
-  };
 };
 
-bool V1290::Finalise() {
-  try {
-    if (thread.alive()) thread.terminate();
+void V1290::readout(
+    unsigned                          tdc_index,
+    std::vector<caen::V1290::Packet>& data
+) {
+  boards[tdc_index].tdc.readout(buffer);
+  data.insert(data.end(), buffer.begin(), buffer.end());
+};
 
-    tdcs.clear();
+void V1290::report_error(unsigned tdc_index, caen::V1290::TDCError error) {
+  auto flags = error.errors();
+  volatile auto& reported = boards[tdc_index].errors;
+  if ((reported & flags) == flags) return;
+  std::lock_guard<std::mutex> lock(tdc_errors_mutex);
+  if ((reported & flags) == flags) return;
+  *m_log
+    << ML(0)
+    << "V1290 " << tdc_index
+    << " reports error 0x" << std::hex << flags << std::dec
+    << " in TDC " << static_cast<int>(error.tdc())
+    << std::endl;
+  // TODO: send alert
+  reported |= flags;
+};
 
-    return true;
-  } catch (std::exception& e) {
-    *m_log << ML(0) << e.what() << std::endl;
-    return false;
+void V1290::submit(
+    std::map<uint32_t, Event>::iterator begin,
+    std::map<uint32_t, Event>::iterator end
+) {
+  std::lock_guard<std::mutex> readout_lock(m_data->v1290_mutex);
+  size_t n = 0;
+  for (auto event = begin; event != end; ++event) {
+    m_data->v1290_readout.push_back(std::move(event->second));
+    ++n;
   };
 };

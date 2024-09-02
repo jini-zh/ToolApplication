@@ -12,10 +12,11 @@ dump(Readout& readout, std::mutex& mutex, std::ofstream& stream) {
   };
 
   for (auto& buffer : r)
-    stream.write(
-        reinterpret_cast<char*>(buffer.data()),
-        buffer.size() * sizeof(buffer.front())
-    );
+    for (auto& hit : buffer)
+      stream.write(
+          reinterpret_cast<char*>(&hit),
+          sizeof(hit)
+      );
 };
 
 void Dumper::dump() {
