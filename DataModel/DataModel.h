@@ -7,8 +7,8 @@
 
 #include <zmq.hpp>
 
-//#include <caen++/v1290.hpp>
-//#include <caen++/v792.hpp>
+#include <caen++/v1290.hpp>
+#include <caen++/v792.hpp>
 
 //#include "TTree.h"o
 
@@ -50,12 +50,12 @@ public:
   //void AddTTree(std::string name,TTree *tree);
   //void DeleteTTree(std::string name,TTree *tree);
 
-  //ThreadLoop vme_readout;
+  ThreadLoop vme_readout;
   
-  //  std::mutex v1290_mutex;
-  //std::list<std::vector<caen::V1290::Packet>> v1290_readout;
-  //std::mutex v792_mutex;
-  //std::list<std::vector<caen::V792::Packet>> v792_readout;
+  std::mutex v1290_mutex;
+  std::list<std::vector<caen::V1290::Packet>> v1290_readout;
+  std::mutex v792_mutex;
+  std::list<std::vector<caen::V792::Packet>> v792_readout;
   
   bool load_config;
   bool change_config;
