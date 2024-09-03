@@ -40,7 +40,7 @@ struct MPMT_args:Thread_args{
   boost::posix_time::time_duration period;
   boost::posix_time::ptime last;
   std::string data_port;
-  unsigned int message_size;
+  bool message_received;
   bool no_data;
   boost::posix_time::time_duration lapse;
   JobQueue* job_queue;

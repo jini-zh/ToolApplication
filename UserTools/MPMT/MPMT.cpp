@@ -179,12 +179,12 @@ void MPMT::Thread(Thread_args* arg){
     zmq::message_t* daq_header = new zmq::message_t;
     zmq::message_t* mpmt_data = new zmq::message_t;
 
-    args->message_size=0;
+    args->message_received=false;
     args->no_data=false;
     
-    args->message_size=args->data_sock->recv(&identity);     
+    args->message_received=args->data_sock->recv(&identity);     
 
-    if(!identity.more() || args->message_size == 0){
+    if(!identity.more() || !args->message_received || identity.size() == 0){
       args->m_data->services->SendLog("Warning: MPMT thread identity has no size or only message",3);
       delete mpmt_data;
       mpmt_data=0;
@@ -193,9 +193,9 @@ void MPMT::Thread(Thread_args* arg){
       return;
     }
     
-    args->message_size=args->data_sock->recv(daq_header);
+    args->message_received=args->data_sock->recv(daq_header);
     
-    if(args->message_size!=DAQHeader::GetSize() ){
+    if(!args->message_received || daq_header->size()!=DAQHeader::GetSize() ){
       args->m_data->services->SendLog("Warning: MPMT thread daq header has no or incorrect size",3);
       delete mpmt_data;
       mpmt_data=0;
@@ -205,13 +205,13 @@ void MPMT::Thread(Thread_args* arg){
     }
     if(!daq_header->more()) args->no_data=true;
     else{
-      args->message_size=args->data_sock->recv(mpmt_data);
-      if(mpmt_data->more() || args->message_size == 0){
+      args->message_received=args->data_sock->recv(mpmt_data);
+      if(mpmt_data->more() || !args->message_received || mpmt_data->size() == 0){
 	args->m_data->services->SendLog("ERROR: MPMT thread too many message parts or no data, throwing away data",2); //add mpmtid
 	zmq::message_t throwaway;
 	if(mpmt_data->more()){
-	  args->message_size=args->data_sock->recv(&throwaway);
-	  while(throwaway.more()) args->message_size=args->data_sock->recv(&throwaway);
+	  args->data_sock->recv(&throwaway);
+	  while(throwaway.more()) args->data_sock->recv(&throwaway);
 	}
 	delete mpmt_data;
 	mpmt_data=0;

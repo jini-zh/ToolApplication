@@ -20,6 +20,8 @@ bool MPMTfakeTrigger::Initialise(std::string configfile, DataModel &data){
 
   if(!m_variables.Get("verbose",m_verbose)) m_verbose=1;
 
+  m_data->readout_windows= new std::deque<ReadoutWindow*>;
+  
   m_util=new Utilities();
   args=new MPMTfakeTrigger_args();
   args->data=m_data;
@@ -28,6 +30,8 @@ bool MPMTfakeTrigger::Initialise(std::string configfile, DataModel &data){
   
   m_util->CreateThread("test", &Thread, args);
 
+
+  
   ExportConfiguration();
   
   return true;
@@ -50,6 +54,9 @@ bool MPMTfakeTrigger::Finalise(){
   delete m_util;
   m_util=0;
 
+  delete m_data->readout_windows;
+  m_data->readout_windows=0;
+  
   return true;
 }
 

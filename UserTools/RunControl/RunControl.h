@@ -63,8 +63,10 @@ class RunControl: public Tool {
   bool m_new_sub_run;
 
   boost::posix_time::ptime* m_start_time;
-  boost::posix_time::time_duration m_period;
-  boost::posix_time::time_duration lapse;
+  boost::posix_time::time_duration m_period_new_sub_run;
+  boost::posix_time::time_duration m_lapse;
+  boost::posix_time::ptime m_config_start;
+  boost::posix_time::time_duration m_period_reconfigure;
   
 };
 
