@@ -212,10 +212,8 @@ bool Digitizer<Packet, Hit>::process(Readout readout) {
 template <typename Packet, typename Hit>
 bool Digitizer<Packet, Hit>::Initialise(std::string configfile, DataModel& data) {
   try {
-    if (configfile != "") m_variables.Initialise(configfile);
-
-    m_data = &data;
-    m_log  = m_data->Log;
+    InitialiseTool(data);
+    InitialiseConfiguration(std::move(configfile));
 
     if (!m_variables.Get("verbose", m_verbose)) m_verbose = 1;
 
@@ -223,6 +221,8 @@ bool Digitizer<Packet, Hit>::Initialise(std::string configfile, DataModel& data)
     readout_cycle = 0;
     process_cycle = 0;
     last_readout_empty = true;
+
+    ExportConfiguration();
 
     return true;
   } catch (std::exception& e) {

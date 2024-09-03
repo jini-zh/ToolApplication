@@ -52,15 +52,15 @@ void Dumper::open(std::ofstream& stream, const std::string& var) {
 
 bool Dumper::Initialise(std::string configfile, DataModel& data) {
   try {
-    if (configfile != "") m_variables.Initialise(configfile);
-
-    m_data = &data;
-    m_log  = m_data->Log;
+    InitialiseTool(data);
+    InitialiseConfiguration(configfile);
 
     if (!m_variables.Get("verbose", m_verbose)) m_verbose = 1;
 
     open(tdc, "tdc");
     open(qdc, "qdc");
+
+    ExportConfiguration();
 
     return true;
 
