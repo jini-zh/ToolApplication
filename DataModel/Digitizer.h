@@ -17,6 +17,8 @@ class Digitizer: public ToolFramework::Tool {
     bool Execute();
     bool Finalise();
 
+    bool acquiring() const { return acquiring_; };
+
   protected:
     using Event = std::deque<Hit>;
     // Connects and configures the boards. Returns the number of boards and the
@@ -26,6 +28,9 @@ class Digitizer: public ToolFramework::Tool {
 
     // This method is called from Finalise and is wrapped in a try-catch block.
     virtual void fini() {};
+
+    virtual void start_acquisition();
+    virtual void stop_acquisition();
 
     // Reads board `board_index` and fills `board_data` with its data. This
     // method is called from the readout thread and shall be as fast as
@@ -62,7 +67,8 @@ class Digitizer: public ToolFramework::Tool {
       size_t                           cycle;
     };
 
-    unsigned nboards   = 0;
+    bool     acquiring_ = false;
+    unsigned nboards    = 0;
 
     ThreadLoop::Thread readout_thread;
 
@@ -210,6 +216,28 @@ bool Digitizer<Packet, Hit>::process(Readout readout) {
 };
 
 template <typename Packet, typename Hit>
+void Digitizer<Packet, Hit>::start_acquisition() {
+  readout_thread = m_data->vme_readout.add(
+      [this]() -> bool {
+        try {
+          readout();
+          return true;
+        } catch (std::exception& e) {
+          *m_log << ML(0) << e.what() << std::endl;
+          return false;
+        }
+      }
+  );
+  acquiring_ = true;
+};
+
+template <typename Packet, typename Hit>
+void Digitizer<Packet, Hit>::stop_acquisition() {
+  acquiring_ = false;
+  readout_thread.terminate();
+};
+
+template <typename Packet, typename Hit>
 bool Digitizer<Packet, Hit>::Initialise(std::string configfile, DataModel& data) {
   try {
     InitialiseTool(data);
@@ -221,6 +249,7 @@ bool Digitizer<Packet, Hit>::Initialise(std::string configfile, DataModel& data)
     readout_cycle = 0;
     process_cycle = 0;
     last_readout_empty = true;
+    acquiring_ = false;
 
     ExportConfiguration();
 
@@ -238,18 +267,8 @@ template <typename Packet, typename Hit>
 bool Digitizer<Packet, Hit>::Execute() {
   if (nboards == 0) return true;
   try {
-    readout_thread = m_data->vme_readout.add(
-        [this]() -> bool {
-          try {
-            readout();
-            return true;
-          } catch (std::exception& e) {
-            *m_log << ML(0) << e.what() << std::endl;
-            return false;
-          }
-        }
-    );
-
+    if (acquiring_) stop_acquisition();
+    start_acquisition();
     return true;
   } catch (std::exception& e) {
     *m_log << ML(0) << e.what() << std::endl;
@@ -260,7 +279,7 @@ bool Digitizer<Packet, Hit>::Execute() {
 template <typename Packet, typename Hit>
 bool Digitizer<Packet, Hit>::Finalise() {
   try {
-    if (readout_thread.alive()) readout_thread.terminate();
+    if (acquiring_) stop_acquisition();
     fini();
     return true;
   } catch (std::exception& e) {

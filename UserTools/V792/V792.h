@@ -22,8 +22,9 @@ class V792: public Digitizer<caen::V792::Packet, QDCHit> {
     void configure();
 
     void init(unsigned& nboards) final;
-
     void fini() final;
+
+    void start_acquisition() final;
 
     void readout(
         unsigned                         qdc_index,

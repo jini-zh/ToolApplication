@@ -311,6 +311,15 @@ void V1290::init(unsigned& nboards) {
 
 void V1290::fini() {
   boards.clear();
+};
+
+void V1290::start_acquisition() {
+  for (auto& board : boards) board.tdc.clear();
+  Digitizer<caen::V1290::Packet, TDCHit>::start_acquisition();
+};
+
+void V1290::stop_acquisition() {
+  Digitizer<caen::V1290::Packet, TDCHit>::stop_acquisition();
   chops.clear();
 };
 

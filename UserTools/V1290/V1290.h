@@ -42,6 +42,9 @@ class V1290: public Digitizer<caen::V1290::Packet, TDCHit> {
     void init(unsigned& nboards) final;
     void fini() final;
 
+    void start_acquisition() final;
+    void stop_acquisition()  final;
+
     void process(
         size_t                                  cycle,
         const std::function<Event& (uint32_t)>& get_event,

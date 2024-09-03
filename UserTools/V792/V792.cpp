@@ -124,6 +124,14 @@ void V792::fini() {
   boards.clear();
 };
 
+void V792::start_acquisition() {
+  for(auto& board : boards) {
+    board.qdc.clear();
+    board.qdc.reset_event_counter();
+  };
+  Digitizer<caen::V792::Packet, QDCHit>::start_acquisition();
+};
+
 void V792::readout(unsigned qdc_index, std::vector<caen::V792::Packet>& data) {
   boards[qdc_index].qdc.readout_wa(buffer);
 

@@ -75,6 +75,8 @@ bool Dumper::Initialise(std::string configfile, DataModel& data) {
 
 bool Dumper::Execute() {
   if (!tdc.is_open() || !qdc.is_open()) return false;
+  if (thread) return true;
+
   try {
     thread.reset(new Thread(*this));
     util.CreateThread("Dumper", &dumper_thread, thread.get());
