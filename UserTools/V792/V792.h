@@ -12,6 +12,9 @@ class V792: public Digitizer<caen::V792::Packet, QDCHit> {
   private:
     struct Board {
       caen::V792 qdc;
+      uint32_t (*readout)(Board&, caen::V792::Buffer&);
+      int      vme_handle;
+      uint32_t vme_address;
       unsigned event_map[32];
     };
 
@@ -30,6 +33,9 @@ class V792: public Digitizer<caen::V792::Packet, QDCHit> {
         unsigned                         qdc_index,
         std::vector<caen::V792::Packet>& data
     ) final;
+
+    static uint32_t readout_blt(Board&, caen::V792::Buffer&);
+    static uint32_t readout_fifoblt(Board&, caen::V792::Buffer&);
 
     void process(
         size_t                                  cycle,
