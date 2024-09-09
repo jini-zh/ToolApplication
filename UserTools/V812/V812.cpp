@@ -90,15 +90,15 @@ void V812::configure() {
 
 bool V812::Initialise(std::string configfile, DataModel& data) {
   try {
-    if (configfile != "") m_variables.Initialise(configfile);
-
-    m_data = &data;
-    m_log  = m_data->Log;
+    InitialiseTool(data);
+    InitialiseConfiguration(std::move(configfile));
 
     if (!m_variables.Get("verbose", m_verbose)) m_verbose = 1;
 
     connect();
     configure();
+
+    ExportConfiguration();
 
     return true;
   } catch (std::exception& e) {

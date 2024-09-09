@@ -9,3 +9,7 @@
 #include "MPMT.h"
 #include "JobManager.h"
 #include "MPMTfakeTrigger.h"
+#include <V1290.h>
+#include <V792.h>
+#include <V812.h>
+#include <Dumper.h>

@@ -12,10 +12,11 @@ dump(Readout& readout, std::mutex& mutex, std::ofstream& stream) {
   };
 
   for (auto& buffer : r)
-    stream.write(
-        reinterpret_cast<char*>(buffer.data()),
-        buffer.size() * sizeof(buffer.front())
-    );
+    for (auto& hit : buffer)
+      stream.write(
+          reinterpret_cast<char*>(&hit),
+          sizeof(hit)
+      );
 };
 
 void Dumper::dump() {
@@ -51,15 +52,15 @@ void Dumper::open(std::ofstream& stream, const std::string& var) {
 
 bool Dumper::Initialise(std::string configfile, DataModel& data) {
   try {
-    if (configfile != "") m_variables.Initialise(configfile);
-
-    m_data = &data;
-    m_log  = m_data->Log;
+    InitialiseTool(data);
+    InitialiseConfiguration(configfile);
 
     if (!m_variables.Get("verbose", m_verbose)) m_verbose = 1;
 
     open(tdc, "tdc");
     open(qdc, "qdc");
+
+    ExportConfiguration();
 
     return true;
 
@@ -74,6 +75,8 @@ bool Dumper::Initialise(std::string configfile, DataModel& data) {
 
 bool Dumper::Execute() {
   if (!tdc.is_open() || !qdc.is_open()) return false;
+  if (thread) return true;
+
   try {
     thread.reset(new Thread(*this));
     util.CreateThread("Dumper", &dumper_thread, thread.get());

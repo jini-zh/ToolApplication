@@ -15,6 +15,10 @@ if (tool=="RunControl") ret=new RunControl;
 if (tool=="Trigger") ret=new Trigger;
 if (tool=="MPMT") ret=new MPMT;
 if (tool=="JobManager") ret=new JobManager;
-  if (tool=="MPMTfakeTrigger") ret=new MPMTfakeTrigger;
+if (tool=="MPMTfakeTrigger") ret=new MPMTfakeTrigger;
+if (tool=="V1290") ret=new V1290;
+if (tool=="V792") ret=new V792;
+if (tool=="V812") ret=new V812;
+if (tool=="Dumper") ret=new Dumper;
 return ret;
 }

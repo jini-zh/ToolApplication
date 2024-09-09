@@ -10,10 +10,8 @@ ifeq ($(MAKECMDGOALS),debug)
 CXXFLAGS+= -O0 -g -lSegFault -rdynamic -DDEBUG
 endif
 
-DataModelInclude =
-#-I $(Dependencies)
-DataModelLib =
-#-L $(Dependencies)/caen++ -lcaen++ -lCAENDigitizer
+DataModelInclude = -I $(Dependencies)/caen/include
+DataModelLib = -L $(Dependencies)/caen/lib -lcaen++ -lCAENComm
 
 MyToolsInclude =
 MyToolsLib =
@@ -53,7 +51,7 @@ src/%.o :  src/%.cpp
 	@echo -e "\e[38;5;214m\n*************** Making " $@ "****************\e[0m"
 	g++ $(CXXFLAGS) -c $< -o $@ $(Includes) $(DataModelInclude)
 
-UserTools/Factory/Factory.o :  UserTools/Factory/Factory.cpp  $(DataModelHEADERS)
+UserTools/Factory/Factory.o :  UserTools/Factory/Factory.cpp  $(DataModelHEADERS) $(MyToolHEADERS)
 	@echo -e "\e[38;5;214m\n*************** Making " $@ "****************\e[0m"
 	g++ $(CXXFLAGS) -c $< -o $@ $(Includes) $(DataModelInclude) $(ToolsInclude)
 
