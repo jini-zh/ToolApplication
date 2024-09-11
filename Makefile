@@ -11,7 +11,7 @@ CXXFLAGS+= -O0 -g -lSegFault -rdynamic -DDEBUG
 endif
 
 DataModelInclude = -I $(Dependencies)/caen/include
-DataModelLib = -L $(Dependencies)/caen/lib -lcaen++ -lCAENComm
+DataModelLib = -L $(Dependencies)/caen/lib -lcaen++ -lCAENComm -lCAENVME
 
 MyToolsInclude =
 MyToolsLib =

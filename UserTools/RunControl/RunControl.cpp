@@ -33,6 +33,9 @@ bool RunControl::Initialise(std::string configfile, DataModel &data){
   m_util=new Utilities();
   args=new RunControl_args();
 
+  m_data->run_number=0;
+  m_data->sub_run_number=0;
+
   args->start_time=&m_data->start_time;
   args->current_coarse_counter=&m_data->current_coarse_counter;
  
@@ -40,7 +43,7 @@ bool RunControl::Initialise(std::string configfile, DataModel &data){
 
   m_data->sc_vars.Add("RunStop",BUTTON, std::bind(&RunControl::RunStop, this,  std::placeholders::_1));
   m_data->sc_vars["RunStop"]->SetValue(0);
-  m_data->sc_vars.Add("RunStart",VARIABLE, std::bind(&RunControl::RunStart, this,  std::placeholders::_1));
+  m_data->sc_vars.Add("RunStart",COMMAND, std::bind(&RunControl::RunStart, this,  std::placeholders::_1));
   m_data->sc_vars["SubRunStart"]->SetValue(0);
   m_data->sc_vars.Add("SubRunStart",BUTTON, std::bind(&RunControl::SubRun, this,  std::placeholders::_1));
   m_data->sc_vars["SubRubStart"]->SetValue(0);
@@ -68,7 +71,14 @@ bool RunControl::Execute(){
       *m_start_time= boost::posix_time::microsec_clock::universal_time() +  boost::posix_time::minutes(1); ///now+1min
       unsigned long secs_since_epoch= boost::posix_time::time_duration(*m_start_time -  boost::posix_time::time_from_string("1970-01-01 00:00:00.000")).total_seconds();
       std::string json_payload="{\"Timestamp\":" + std::to_string(secs_since_epoch) + "}";
-      m_data->sc_vars.AlertSend("RunStart");
+      m_data->sc_vars.AlertSend("RunStart",json_payload);
+      std::stringstream sql_query;
+      sql_query<<"insert into run_info values ((select max(run) from run_info) +1,0,"<<std::to_string(secs_since_epoch)<<",NULL,"<<m_data->run_configuration<<",'"<<m_run_description<<"');";
+      m_data->services->SQLQuery("daq",sql_query.str());
+      m_data->sub_run_number=0;
+      m_data->run_number=1;
+	
+      
       //time_t now = time(0);
       //struct tm y2k = {0};
       //tm utc = *gmtime(&now);
@@ -125,18 +135,23 @@ void RunControl::Thread(Thread_args* arg){
 
 std::string RunControl::RunStart(const char* key){
 
-  ////////////this blocking is no good and needs to be corrected. have to farm off the wait to the execture process.
   
   m_data->load_config=true;
-  unsigned int run_configuration=0;
-  m_data->sc_vars["RunStart"]->GetValue(run_configuration);
+  std::string run_json="";
+  m_data->sc_vars["RunStart"]->GetValue(run_json);
+  Store run_info;
+  run_info.JsonParser(run_json);
+  if(!run_info.Get("run_description",m_run_description)) m_run_description="NONE";
+  if(!run_info.Get("run_configuration",m_data->run_configuration)){
 
-  //add new db entry to run table
-
-  std::string json_payload="{\"RunConfig\":" + std::to_string(run_configuration) + "}";
+    //throw an error or something
+  }
+  
+  
+  std::string json_payload="{\"RunConfig\":" + std::to_string(m_data->run_configuration) + "}";
   m_data->sc_vars.AlertSend("ChangeConfig", json_payload);
   m_run_start=true;
-
+  
   m_config_start=boost::posix_time::microsec_clock::universal_time();
 
   return "new Run started";
@@ -147,8 +162,9 @@ std::string RunControl::RunStop(const char* key){
   
   m_data->sc_vars.AlertSend("RunStop");     
   m_run_stop=true;
- //update db stoptime in run table
-  
+  std::stringstream sql_query;
+  sql_query<<"update run_info set stop_time = now() where run_number = "<< m_data->run_number<<" and sub_run_number = "<<m_data->sub_run_number; //maybenot now maybe local ptime
+  m_data->services->SQLQuery("daq",sql_query.str());
 
   return "Run stopped";
   
@@ -157,10 +173,20 @@ std::string RunControl::RunStop(const char* key){
 std::string RunControl::SubRun(const char* key){
   
   m_new_sub_run=true;     
-
+      
+  *m_start_time= boost::posix_time::microsec_clock::universal_time() +  boost::posix_time::minutes(1); ///now+1min
+  unsigned long secs_since_epoch= boost::posix_time::time_duration(*m_start_time -  boost::posix_time::time_from_string("1970-01-01 00:00:00.000")).total_seconds();
+  
+  std::stringstream sql_query;
+  sql_query<<"insert into run_info values ((select max(run) from run_info),(select max(sub_run) from run_info) +1,"<<std::to_string(secs_since_epoch)<<",NULL,"<<m_data->run_configuration<<",'"<<m_run_description<<"');";
+  m_data->services->SQLQuery("daq",sql_query.str());
+  m_data->sub_run_number=0;
+  m_data->run_number=1;
+  
+  
   //update db
   //update local variable and start time
-
+  
   return "Run stopped";
   
 }

@@ -260,7 +260,7 @@ bool MPMT::ProcessData(void* data){
   MPMTMessages* msgs=reinterpret_cast<MPMTMessages*>(data);
   
   DAQHeader* daq_header=reinterpret_cast<DAQHeader*>(msgs->daq_header->data());
-  unsigned int bin= daq_header->GetCoarseCounter() >> 4; //might not be worth rounding
+  unsigned int bin= daq_header->GetCoarseCounter() >> 3; //might not be worth rounding
   unsigned short card_id = daq_header->GetCardID();
   unsigned short card_type = daq_header->GetCardType();
   unsigned long bytes=msgs->mpmt_data->size();

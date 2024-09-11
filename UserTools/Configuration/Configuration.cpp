@@ -19,7 +19,7 @@ bool Configuration::Initialise(std::string configfile, DataModel &data){
   
   if(!m_variables.Get("verbose",m_verbose)) m_verbose=1;
   
-  
+  m_data->run_configuration=0;  
   m_data->change_config=false;
   m_data->load_config=false;
   
