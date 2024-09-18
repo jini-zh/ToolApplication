@@ -307,7 +307,7 @@ void V1290::init(unsigned& nboards, VMEReadout<TDCHit>*& output) {
   connect();
   configure();
   nboards = boards.size();
-  output  = &m_data->v1290_readout;
+  output  = &m_data->tdc_readout;
 };
 
 void V1290::fini() {

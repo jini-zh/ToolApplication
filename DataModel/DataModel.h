@@ -54,8 +54,8 @@ public:
   //void DeleteTTree(std::string name,TTree *tree);
 
   ThreadLoop vme_readout_loop;
-  VMEReadout<QDCHit> v792_readout;
-  VMEReadout<TDCHit> v1290_readout;
+  VMEReadout<QDCHit> qdc_readout;
+  VMEReadout<TDCHit> tdc_readout;
   
   bool load_config;
   bool change_config;

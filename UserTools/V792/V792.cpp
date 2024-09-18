@@ -118,7 +118,7 @@ void V792::init(unsigned& nboards, VMEReadout<QDCHit>*& output) {
   connect();
   configure();
   nboards = boards.size();
-  output  = &m_data->v792_readout;
+  output  = &m_data->qdc_readout;
 };
 
 void V792::fini() {
