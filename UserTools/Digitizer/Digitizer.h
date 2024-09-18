@@ -20,17 +20,20 @@ class Digitizer: public ToolFramework::Tool {
     bool acquiring() const { return acquiring_; };
 
   protected:
-    using Event = std::deque<Hit>;
-    // Connects and configures the boards. Returns the number of boards and the
-    // total number of channels across all boards. This method is called from
-    // Initialise and is wrapped in a try-catch block.
-    virtual void init(unsigned& nboards) = 0;
+    using Event = std::vector<Hit>;
+
+    // Connects and configures the boards. Returns the number of boards and a
+    // pointer to VMEReadout object to store data in. This method is called
+    // from Initialise and is wrapped in a try-catch block.
+    virtual void init(unsigned& nboards, VMEReadout<Hit>*& output) = 0;
 
     // This method is called from Finalise and is wrapped in a try-catch block.
     virtual void fini() {};
 
     virtual void start_acquisition();
     virtual void stop_acquisition();
+
+    virtual void configure() {};
 
     // Reads board `board_index` and fills `board_data` with its data. This
     // method is called from the readout thread and shall be as fast as
@@ -42,8 +45,7 @@ class Digitizer: public ToolFramework::Tool {
     // Processes the data read from board `board_index`. The data shall be
     // converted to hits and stored in the result of `get_event` which takes an
     // event number and returns a vector of hits, one hit per channel for all
-    // channels of all boards. Use `board_index` to calculate the offset for
-    // the boards' hits.
+    // channels of all boards.
     // This method if called from the worker job queues
     virtual void process(
       size_t                                  cycle,
@@ -52,23 +54,15 @@ class Digitizer: public ToolFramework::Tool {
       std::vector<Packet>                     board_data
     ) = 0;
 
-    // Sends the events designated by the iterators down the processing chain.
-    // Events data should be moved out of the map; map nodes are erased after
-    // the call to this function. The events are ordered by the event number
-    // and this method will be called for event chunks in the same order.
-    virtual void submit(
-        typename std::map<uint32_t, Event>::iterator begin,
-        typename std::map<uint32_t, Event>::iterator end
-    ) = 0;
-
   private:
     struct Readout {
       std::vector<std::vector<Packet>> data;
       size_t                           cycle;
     };
 
-    bool     acquiring_ = false;
-    unsigned nboards    = 0;
+    bool     acquiring_     = false;
+    unsigned nboards        = 0;
+    VMEReadout<Hit>* output = nullptr;
 
     ThreadLoop::Thread readout_thread;
 
@@ -94,6 +88,12 @@ class Digitizer: public ToolFramework::Tool {
 
     void readout();
     bool process(Readout);
+
+    void submit(
+        typename std::map<uint32_t, Event>::iterator begin,
+        typename std::map<uint32_t, Event>::iterator end
+    );
+
 };
 
 template <typename Packet, typename Hit>
@@ -140,8 +140,10 @@ bool Digitizer<Packet, Hit>::process(Readout readout) {
               max_event[iboard] = ievent;
             std::lock_guard<std::mutex> events_lock(events_mutex);
             auto pevent = events.lower_bound(ievent);
-            if (pevent == events.end() || pevent->first != ievent)
+            if (pevent == events.end() || pevent->first != ievent) {
               pevent = events.insert(pevent, { ievent, Event() });
+              pevent->second.reserve(16);
+            };
             return pevent->second;
           },
           iboard,
@@ -216,8 +218,45 @@ bool Digitizer<Packet, Hit>::process(Readout readout) {
 };
 
 template <typename Packet, typename Hit>
+void Digitizer<Packet, Hit>::submit(
+    typename std::map<uint32_t, Event>::iterator begin,
+    typename std::map<uint32_t, Event>::iterator end
+) {
+  class values_iterator {
+    public:
+      values_iterator(typename std::map<uint32_t, Event>::iterator iterator):
+        iterator(iterator)
+      {};
+
+      bool operator!=(const values_iterator& i) {
+        return iterator != i.iterator;
+      };
+
+      values_iterator& operator++() {
+        ++iterator;
+        return *this;
+      };
+
+      values_iterator  operator++(int) {
+        values_iterator i(iterator);
+        ++iterator;
+        return i;
+      };
+
+      Event& operator*() const {
+        return iterator->second;
+      };
+
+    public:
+      typename std::map<uint32_t, Event>::iterator iterator;
+  };
+
+  output->push(values_iterator(begin), values_iterator(end));
+};
+
+template <typename Packet, typename Hit>
 void Digitizer<Packet, Hit>::start_acquisition() {
-  readout_thread = m_data->vme_readout.add(
+  readout_thread = m_data->vme_readout_loop.add(
       [this]() -> bool {
         try {
           readout();
@@ -245,7 +284,7 @@ bool Digitizer<Packet, Hit>::Initialise(std::string configfile, DataModel& data)
 
     if (!m_variables.Get("verbose", m_verbose)) m_verbose = 1;
 
-    init(nboards);
+    init(nboards, output);
     readout_cycle = 0;
     process_cycle = 0;
     last_readout_empty = true;
@@ -268,6 +307,10 @@ bool Digitizer<Packet, Hit>::Execute() {
   if (nboards == 0) return true;
   try {
     if (acquiring_) stop_acquisition();
+    if (m_data->change_config) {
+      InitialiseConfiguration();
+      configure();
+    };
     start_acquisition();
     return true;
   } catch (std::exception& e) {

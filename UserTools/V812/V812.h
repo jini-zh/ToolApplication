@@ -10,7 +10,7 @@
 class V812: public ToolFramework::Tool {
   public:
     bool Initialise(std::string configfile, DataModel&);
-    bool Execute() { return true; };
+    bool Execute();
     bool Finalise();
 
   private:

@@ -110,6 +110,19 @@ bool V812::Initialise(std::string configfile, DataModel& data) {
   };
 };
 
+bool V812::Execute() {
+  try {
+    if (m_data->change_config) {
+      InitialiseConfiguration();
+      configure();
+    };
+    return true;
+  } catch (std::exception& e) {
+    *m_log << ML(0) << e.what() << std::endl;
+    return false;
+  };
+};
+
 bool V812::Finalise() {
   try {
     cfds.clear();
