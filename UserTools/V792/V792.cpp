@@ -168,8 +168,6 @@ void V792::process(
     // should never happen
     throw std::runtime_error("QDC: unexpected packet");
 
-  Board& board = boards[qdc_index];
-
   std::vector<caen::V792::Packet>::iterator pheader;
   for (auto packet = qdc_data.begin(); packet != qdc_data.end(); ++packet)
     switch (packet->type()) {

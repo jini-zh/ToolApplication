@@ -21,9 +21,9 @@ class Digitizer: public ToolFramework::Tool {
 
   protected:
     using Event = std::deque<Hit>;
-    // Connects and configures the boards. Returns the number of boards and the
-    // total number of channels across all boards. This method is called from
-    // Initialise and is wrapped in a try-catch block.
+
+    // Connects and configures the boards. Returns the number of boards. This
+    // method is called from Initialise and is wrapped in a try-catch block.
     virtual void init(unsigned& nboards) = 0;
 
     // This method is called from Finalise and is wrapped in a try-catch block.
@@ -44,8 +44,7 @@ class Digitizer: public ToolFramework::Tool {
     // Processes the data read from board `board_index`. The data shall be
     // converted to hits and stored in the result of `get_event` which takes an
     // event number and returns a vector of hits, one hit per channel for all
-    // channels of all boards. Use `board_index` to calculate the offset for
-    // the boards' hits.
+    // channels of all boards.
     // This method if called from the worker job queues
     virtual void process(
       size_t                                  cycle,

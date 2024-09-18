@@ -53,7 +53,6 @@ class V1290: public Digitizer<caen::V1290::Packet, TDCHit> {
     ) final;
 
     void process(
-        Board&,
         const std::function<Event& (uint32_t)>& get_event,
         RawEvent&
     );

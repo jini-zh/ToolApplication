@@ -331,8 +331,6 @@ void V1290::process(
 ) {
   if (tdc_data.empty()) return;
 
-  Board& board = boards[tdc_index];
-
   RawEvent event;
   event.ettt  = 0;
   event.nhits = 0;
@@ -362,17 +360,16 @@ void V1290::process(
 
       case caen::V1290::Packet::GlobalTrailer:
         if (chop || chop_event(cycle, event, false))
-          process(board, get_event, event);
+          process(get_event, event);
         chop = false;
         break;
     };
 
   if (chop && chop_event(cycle + 1, event, true))
-    process(board, get_event, event);
+    process(get_event, event);
 };
 
 void V1290::process(
-    Board& board,
     const std::function<Event& (uint32_t)>& get_event,
     RawEvent& raw_event
 ) {
@@ -417,9 +414,6 @@ void V1290::submit(
     std::map<uint32_t, Event>::iterator end
 ) {
   std::lock_guard<std::mutex> readout_lock(m_data->v1290_mutex);
-  size_t n = 0;
-  for (auto event = begin; event != end; ++event) {
+  for (auto event = begin; event != end; ++event)
     m_data->v1290_readout.push_back(std::move(event->second));
-    ++n;
-  };
 };
