@@ -303,10 +303,11 @@ void V1290::configure() {
   *m_log << ML(3) << "success" << std::endl;
 };
 
-void V1290::init(unsigned& nboards) {
+void V1290::init(unsigned& nboards, VMEReadout<TDCHit>*& output) {
   connect();
   configure();
   nboards = boards.size();
+  output  = &m_data->v1290_readout;
 };
 
 void V1290::fini() {
@@ -407,13 +408,4 @@ void V1290::report_error(unsigned tdc_index, caen::V1290::TDCError error) {
     << std::endl;
   // TODO: send alert
   reported |= flags;
-};
-
-void V1290::submit(
-    std::map<uint32_t, Event>::iterator begin,
-    std::map<uint32_t, Event>::iterator end
-) {
-  std::lock_guard<std::mutex> readout_lock(m_data->v1290_mutex);
-  for (auto event = begin; event != end; ++event)
-    m_data->v1290_readout.push_back(std::move(event->second));
 };

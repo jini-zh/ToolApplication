@@ -23,7 +23,7 @@
 #include "DAQHeader.h"
 #include "WCTEMPMTPPS.h"
 #include "UnsortedData.h"
-
+#include "VMEReadout.h"
 
 #include "TDCHit.h"
 #include "QDCHit.h"
@@ -53,13 +53,9 @@ public:
   //void AddTTree(std::string name,TTree *tree);
   //void DeleteTTree(std::string name,TTree *tree);
 
-  ThreadLoop vme_readout;
-  
-  std::mutex v1290_mutex;
-  std::deque<std::deque<TDCHit>> v1290_readout;
-
-  std::mutex v792_mutex;
-  std::deque<std::deque<QDCHit>> v792_readout;
+  ThreadLoop vme_readout_loop;
+  VMEReadout<QDCHit> v792_readout;
+  VMEReadout<TDCHit> v1290_readout;
   
   bool load_config;
   bool change_config;

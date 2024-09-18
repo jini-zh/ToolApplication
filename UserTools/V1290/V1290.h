@@ -39,7 +39,7 @@ class V1290: public Digitizer<caen::V1290::Packet, TDCHit> {
     void connect();
     void configure() final;
 
-    void init(unsigned& nboards) final;
+    void init(unsigned& nboards, VMEReadout<TDCHit>*& output) final;
     void fini() final;
 
     void start_acquisition() final;
@@ -63,11 +63,6 @@ class V1290: public Digitizer<caen::V1290::Packet, TDCHit> {
     ) final;
 
     void report_error(unsigned tdc_index, caen::V1290::TDCError);
-
-    void submit(
-        std::map<uint32_t, Event>::iterator begin,
-        std::map<uint32_t, Event>::iterator end
-    ) final;
 };
 
 #endif

@@ -21,7 +21,7 @@ class V792: public Digitizer<caen::V792::Packet, QDCHit> {
     void connect();
     void configure() final;
 
-    void init(unsigned& nboards) final;
+    void init(unsigned& nboards, VMEReadout<QDCHit>*& output) final;
     void fini() final;
 
     void start_acquisition() final;
@@ -36,11 +36,6 @@ class V792: public Digitizer<caen::V792::Packet, QDCHit> {
         const std::function<Event& (uint32_t)>& get_event,
         unsigned                                qdc_index,
         std::vector<caen::V792::Packet>         qdc_data
-    ) final;
-
-    void submit(
-        std::map<uint32_t, Event>::iterator begin,
-        std::map<uint32_t, Event>::iterator end
     ) final;
 };
 

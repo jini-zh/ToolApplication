@@ -114,10 +114,11 @@ void V792::configure() {
   *m_log << ML(3) << "success" << std::endl;
 };
 
-void V792::init(unsigned& nboards) {
+void V792::init(unsigned& nboards, VMEReadout<QDCHit>*& output) {
   connect();
   configure();
   nboards = boards.size();
+  output  = &m_data->v792_readout;
 };
 
 void V792::fini() {
@@ -186,13 +187,4 @@ void V792::process(
         break;
       };
     };
-};
-
-void V792::submit(
-    std::map<uint32_t, Event>::iterator begin,
-    std::map<uint32_t, Event>::iterator end
-) {
-  std::lock_guard<std::mutex> readout_lock(m_data->v792_mutex);
-  for (auto event = begin; event != end; ++event)
-    m_data->v792_readout.push_back(std::move(event->second));
 };

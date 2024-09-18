@@ -2,26 +2,19 @@
 
 #include "Dumper.h"
 
-template <typename Readout>
-static void
-dump(Readout& readout, std::mutex& mutex, std::ofstream& stream) {
-  Readout r;
-  {
-    std::lock_guard<std::mutex> lock(mutex);
-    readout.swap(r);
-  };
-
-  for (auto& buffer : r)
-    for (auto& hit : buffer)
-      stream.write(
-          reinterpret_cast<char*>(&hit),
-          sizeof(hit)
-      );
+template <typename Hit>
+static void dump(VMEReadout<Hit>& readout, std::ofstream& stream) {
+  auto r = readout.get();
+  for (auto& event : r)
+    stream.write(
+        reinterpret_cast<char*>(event.data()),
+        sizeof(*event.data()) * event.size()
+    );
 };
 
 void Dumper::dump() {
-  ::dump(m_data->v1290_readout, m_data->v1290_mutex, tdc);
-  ::dump(m_data->v792_readout,  m_data->v792_mutex,  qdc);
+  ::dump(m_data->v1290_readout, tdc);
+  ::dump(m_data->v792_readout,  qdc);
 };
 
 void Dumper::dumper_thread(ToolFramework::Thread_args* args) {
