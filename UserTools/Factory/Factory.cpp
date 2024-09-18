@@ -19,6 +19,7 @@ if (tool=="MPMTfakeTrigger") ret=new MPMTfakeTrigger;
 if (tool=="V1290") ret=new V1290;
 if (tool=="V792") ret=new V792;
 if (tool=="V812") ret=new V812;
+if (tool=="V1495") ret=new V1495;
 if (tool=="Dumper") ret=new Dumper;
   if (tool=="Sorting") ret=new Sorting;
 return ret;
