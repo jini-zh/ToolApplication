@@ -32,6 +32,8 @@ class Digitizer: public ToolFramework::Tool {
     virtual void start_acquisition();
     virtual void stop_acquisition();
 
+    virtual void configure() {};
+
     // Reads board `board_index` and fills `board_data` with its data. This
     // method is called from the readout thread and shall be as fast as
     // possible.
@@ -268,6 +270,10 @@ bool Digitizer<Packet, Hit>::Execute() {
   if (nboards == 0) return true;
   try {
     if (acquiring_) stop_acquisition();
+    if (m_data->change_config) {
+      InitialiseConfiguration();
+      configure();
+    };
     start_acquisition();
     return true;
   } catch (std::exception& e) {

@@ -19,7 +19,7 @@ class V792: public Digitizer<caen::V792::Packet, QDCHit> {
     caen::V792::Buffer buffer;
 
     void connect();
-    void configure();
+    void configure() final;
 
     void init(unsigned& nboards) final;
     void fini() final;

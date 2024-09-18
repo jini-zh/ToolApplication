@@ -37,7 +37,7 @@ class V1290: public Digitizer<caen::V1290::Packet, TDCHit> {
     bool chop_event(size_t cycle, RawEvent&, bool head);
 
     void connect();
-    void configure();
+    void configure() final;
 
     void init(unsigned& nboards) final;
     void fini() final;
