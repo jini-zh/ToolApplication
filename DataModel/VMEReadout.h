@@ -7,14 +7,18 @@
 
 template <typename Hit>
 class VMEReadout {
-  public:
-    template <typename Iterator>
-    void push(Iterator begin, Iterator end);
-
-    std::deque<std::vector<Hit>> get();
-  private:
-    std::mutex mutex;
-    std::deque<std::vector<Hit>> readout;
+public:
+  template <typename Iterator>
+  void push(Iterator begin, Iterator end);
+  
+  std::deque<std::vector<Hit>> get();
+  bool Send(zmq::socket_t* sock){ return true;}
+  bool Receive(zmq::socket_t* sock){ return true;}
+  unsigned int size(){return readout.size();}
+  
+private:
+  std::mutex mutex;
+  std::deque<std::vector<Hit> > readout;
 };
 
 template <typename Hit>
@@ -28,6 +32,8 @@ template <typename Hit>
 std::deque<std::vector<Hit>> VMEReadout<Hit>::get() {
   std::lock_guard<std::mutex> lock(mutex);
   return std::move(readout);
+
+  
 };
 /*
 template <typename Hit> bool Send(zmq::socket_t* sock){
