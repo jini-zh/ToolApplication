@@ -11,12 +11,12 @@ Configuration::Configuration():Tool(){}
 bool Configuration::Initialise(std::string configfile, DataModel &data){
 
   
-  LoadConfig();  
-
   InitialiseTool(data);
   InitialiseConfiguration(configfile);
   //m_variables.Print();
   
+  LoadConfig();
+
   if(!m_variables.Get("verbose",m_verbose)) m_verbose=1;
   
   m_data->run_configuration=0;  
