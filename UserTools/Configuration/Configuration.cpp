@@ -72,7 +72,7 @@ void Configuration::Thread(Thread_args* arg){
 bool Configuration::LoadConfig(){
 
   std::string config_json="";
-  if(m_data->services->GetConfig(config_json)){
+  if(m_data->services->GetRunDeviceConfig(config_json, m_data->run_configuration)){
     m_data->vars.JsonParser(config_json);
     m_data->change_config=true;
     InitialiseConfiguration("");
