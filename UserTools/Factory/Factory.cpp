@@ -22,6 +22,7 @@ if (tool=="V1495") ret=new V1495;
 if (tool=="Dumper") ret=new Dumper;
 if (tool=="Sorting") ret=new Sorting;
 if (tool=="SlaveRunControl") ret=new SlaveRunControl;
+if (tool=="VMETest") ret=new VMETest;
 if (tool=="VMESend") ret=new VMESend;
 if (tool=="VMEReceive") ret=new VMEReceive;
   if (tool=="Nhits") ret=new Nhits;
