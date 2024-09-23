@@ -13,8 +13,15 @@ static void dump(VMEReadout<Hit>& readout, std::ofstream& stream) {
 };
 
 void Dumper::dump() {
-  ::dump(m_data->tdc_readout, tdc);
-  ::dump(m_data->qdc_readout, qdc);
+  bool qdc_ = m_data->qdc_readout.size();
+  bool tdc_ = m_data->tdc_readout.size();
+  if (!qdc_ && !tdc_) {
+    usleep(100);
+    return;
+  };
+
+  if (qdc_) ::dump(m_data->qdc_readout, qdc);
+  if (tdc_) ::dump(m_data->tdc_readout, tdc);
 };
 
 void Dumper::dumper_thread(ToolFramework::Thread_args* args) {
