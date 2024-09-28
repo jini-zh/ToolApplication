@@ -11,12 +11,12 @@ Configuration::Configuration():Tool(){}
 bool Configuration::Initialise(std::string configfile, DataModel &data){
 
   
-  LoadConfig();  
-
   InitialiseTool(data);
   InitialiseConfiguration(configfile);
   //m_variables.Print();
   
+  LoadConfig();
+
   if(!m_variables.Get("verbose",m_verbose)) m_verbose=1;
   
   m_data->run_configuration=0;  
@@ -72,7 +72,7 @@ void Configuration::Thread(Thread_args* arg){
 bool Configuration::LoadConfig(){
 
   std::string config_json="";
-  if(m_data->services->GetConfig(config_json)){
+  if(m_data->services->GetRunDeviceConfig(config_json, m_data->run_configuration)){
     m_data->vars.JsonParser(config_json);
     m_data->change_config=true;
     InitialiseConfiguration("");

@@ -306,12 +306,18 @@ template <typename Packet, typename Hit>
 bool Digitizer<Packet, Hit>::Execute() {
   if (nboards == 0) return true;
   try {
-    if (acquiring_) stop_acquisition();
+    if (m_data->run_start && !acquiring_) start_acquisition();
+
     if (m_data->change_config) {
+      bool acq = acquiring_;
+      if (acq) stop_acquisition();
       InitialiseConfiguration();
       configure();
+      if (acq) start_acquisition();
     };
-    start_acquisition();
+
+    if (m_data->run_stop && acquiring_) stop_acquisition();
+
     return true;
   } catch (std::exception& e) {
     *m_log << ML(0) << e.what() << std::endl;

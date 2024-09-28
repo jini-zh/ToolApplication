@@ -17,3 +17,4 @@
 #include "Sorting.h"
 #include "VMESend.h"
 #include "VMEReceive.h"
+#include "SlaveRunControl.h"
