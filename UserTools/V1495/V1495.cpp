@@ -18,13 +18,6 @@ static unsigned long str_to_ulong(const std::string& string, int base = 10) {
   return result;
 };
 
-static uint32_t str_to_uint32(const std::string& string, int base = 10) {
-  unsigned long result = str_to_ulong(string, base);
-  if (result > std::numeric_limits<uint32_t>().max())
-    throw std::runtime_error(std::string("uint32_t overflow: ") + string);
-  return result;
-};
-
 static uint16_t str_to_uint16(const std::string& string, int base = 10) {
   unsigned long result = str_to_ulong(string, base);
   if (result > std::numeric_limits<uint16_t>().max())
@@ -32,12 +25,10 @@ static uint16_t str_to_uint16(const std::string& string, int base = 10) {
   return result;
 };
 
-static std::string slurp(const std::string& filename) {
-  std::ifstream file(filename, std::ios::ate);
-  file.exceptions(std::ios_base::badbit | std::ios_base::failbit);
-  std::string result(file.tellg(), 0);
-  file.seekg(0);
-  file.read(&result[0], result.size());
+static uint32_t str_to_uint32(const std::string& string, int base = 10) {
+  unsigned long result = str_to_ulong(string, base);
+  if (result > std::numeric_limits<uint32_t>().max())
+    throw std::runtime_error(std::string("uint32_t overflow: ") + string);
   return result;
 };
 
@@ -66,7 +57,7 @@ void V1495::configure() {
   std::string config;
   if (!m_variables.Get("config", config)) return;
   ToolFramework::Store json;
-  json.JsonParser(slurp(config));
+  json.JsonParser(config);
   for (auto& kv : json)
     board->write32(
         str_to_uint16(kv.first, 16),

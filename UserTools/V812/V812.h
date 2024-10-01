@@ -2,6 +2,7 @@
 #define V812_H
 
 #include <memory>
+#include <map>
 
 #include <caen++/v812.hpp>
 
@@ -15,6 +16,9 @@ class V812: public ToolFramework::Tool {
 
   private:
     std::vector<caen::V812> cfds;
+
+    // VME address -> V812
+    std::map<uint16_t, caen::V812*> pcfds;
 
     void connect();
     void configure();
