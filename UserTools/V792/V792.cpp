@@ -1,3 +1,5 @@
+#include <CAENVMElib.h>
+
 #include "Store.h"
 #include "DataModel.h"
 
@@ -9,7 +11,32 @@ void V792::connect() {
   boards.reserve(connections.size());
   for (auto& connection : connections) {
     caen_report_connection(*m_log << ML(3), "V792", connection);
-    boards.emplace_back(Board { caen::V792(connection) });
+    Board board { caen::V792(connection) };
+    uint16_t firmware = board.qdc.firmware_revision();
+    *m_log
+      << ML(3)
+      << "V792 firmware revision is 0x"
+      << std::hex
+      << firmware
+      << std::dec
+      << std::endl;
+    if (firmware <= 0x501) {
+      *m_log
+        << ML(2)
+        << "V792: old firmware detected, using FIFOBLT for readout"
+        << std::endl;
+      board.vme_address = connection.vme;
+      board.vme_handle  = board.qdc.vme_handle();
+      board.readout     = readout_fifoblt;
+    } else {
+      if (firmware < 0x904)
+        *m_log
+          << ML(1)
+          << "V792: untested firmware revision, assuming BLTRead works"
+          << std::endl;
+      board.readout = readout_blt;
+    };
+    boards.emplace_back(std::move(board));
   };
 };
 
@@ -134,27 +161,79 @@ void V792::start_acquisition() {
 };
 
 void V792::readout(unsigned qdc_index, std::vector<caen::V792::Packet>& data) {
-  boards[qdc_index].qdc.readout_wa(buffer);
+  Board& board = boards[qdc_index];
+  uint32_t n = board.readout(board, buffer);
+  data.insert(data.end(), buffer.begin(), buffer.begin() + n);
+};
+
+uint32_t V792::readout_blt(Board& board, caen::V792::Buffer& buffer) {
+  board.qdc.readout(buffer);
+  return buffer.size();
+};
+
+uint32_t V792::readout_fifoblt(Board& board, caen::V792::Buffer& buffer) {
+  int n;
+  CVErrorCodes status = CAENVME_FIFOBLTReadCycle(
+      board.vme_handle,
+      board.vme_address,
+      buffer.raw(),
+      buffer.max_size() * sizeof(uint32_t),
+      cvA32_U_DATA,
+      cvD32,
+      &n
+  );
+
+  if (status != cvSuccess && status != cvBusError) {
+    CAENComm_ErrorCode code;
+    switch (status) {
+      case cvCommError:
+        code = CAENComm_CommError;
+        break;
+      case cvGenericError:
+        code = CAENComm_GenericError;
+        break;
+      case cvInvalidParam:
+        code = CAENComm_InvalidParam;
+        break;
+      case cvTimeoutError:
+        code = CAENComm_CommTimeout;
+        break;
+      case cvAlreadyOpenError:
+        code = CAENComm_DeviceAlreadyOpen;
+        break;
+      case cvMaxBoardCountError:
+        code = CAENComm_MaxDevicesError;
+        break;
+      case cvNotSupported:
+        code = CAENComm_NotSupported;
+        break;
+      default:
+        code = static_cast<CAENComm_ErrorCode>(static_cast<int>(status) - 100);
+    };
+    throw caen::Device::Error(code);
+  };
+
+  n /= 4;
 
   // Find the first Invalid packet, or skip to the end of the buffer
-  // TODO: move it to process?
-  uint32_t n = buffer.size();
-  if (n > 0 && buffer[n-1].type() == caen::V792::Packet::Invalid)
-    if (buffer[0].type() == caen::V792::Packet::Invalid)
-      n = 0;
-    else {
-      // binary search
-      uint32_t m = 0;
-      while (n - m > 1) {
-        uint32_t k = (n + m) / 2;
-        if (buffer[k].type() == caen::V792::Packet::Invalid)
-          n = k;
-        else
-          m = k;
-      };
-    };
 
-  data.insert(data.end(), buffer.begin(), buffer.begin() + n);
+  if (n == 0 || buffer[n-1].type() != caen::V792::Packet::Invalid)
+    return n;
+
+  if (buffer[0].type() == caen::V792::Packet::Invalid)
+    return 0;
+
+  // binary search
+  uint32_t m = 0;
+  while (n - m > 1) {
+    uint32_t k = (n + m) / 2;
+    if (buffer[k].type() == caen::V792::Packet::Invalid)
+      n = k;
+    else
+      m = k;
+  };
+
+  return n;
 };
 
 void V792::process(
@@ -165,9 +244,12 @@ void V792::process(
 ) {
   if (qdc_data.empty()) return;
 
-  if (qdc_data.front().type() != caen::V792::Packet::Header)
+  if (qdc_data.front().type() != caen::V792::Packet::Header) {
     // should never happen
-    throw std::runtime_error("QDC: unexpected packet");
+    std::stringstream ss;
+    ss << "QDC: unexpected packet 0x" << std::dec << qdc_data.front();
+    throw std::runtime_error(ss.str());
+  };
 
   std::vector<caen::V792::Packet>::iterator pheader;
   for (auto packet = qdc_data.begin(); packet != qdc_data.end(); ++packet)
