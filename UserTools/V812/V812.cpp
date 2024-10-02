@@ -3,6 +3,21 @@
 #include "V812.h"
 #include "caen.h"
 
+static unsigned long str_to_ulong(const std::string& string, int base = 10) {
+  char* end;
+  unsigned long result = std::strtoul(string.c_str(), &end, base);
+  if (*end)
+    throw std::runtime_error(std::string("bad integer: ") + string);
+  return result;
+};
+
+static uint16_t str_to_uint16(const std::string& string, int base = 10) {
+  unsigned long result = str_to_ulong(string, base);
+  if (result > std::numeric_limits<uint16_t>().max())
+    throw std::runtime_error(std::string("uint16_t overflow: ") + string);
+  return result;
+};
+
 void V812::connect() {
   auto connections = caen_connections(m_variables);
   cfds.reserve(connections.size());
@@ -10,6 +25,8 @@ void V812::connect() {
     caen_report_connection(*m_log << ML(3), "V812", connection);
     cfds.emplace_back(connection);
   };
+  auto icfd = cfds.begin();
+  for (auto& connection : connections) pcfds[connection.vme] = &*icfd++;
 };
 
 template <typename T>
@@ -85,6 +102,33 @@ void V812::configure() {
       cfd.set_majority_threshold(i);
   };
 
+  std::string config;
+  if (m_variables.Get("config", config)) {
+    ToolFramework::Store config_json;
+    config_json.JsonParser(config);
+    for (auto& cfg : config_json) {
+      uint16_t address = str_to_uint16(cfg.first);
+      auto icfd = pcfds.find(address);
+      if (icfd == pcfds.end()) {
+        std::stringstream ss;
+        ss
+          << "The board at VME address 0x"
+          << std::hex << std::setfill('0') << std::setw(4) << address
+          << " is not known to the V812 tool";
+        throw std::runtime_error(ss.str());
+      };
+      auto cfd = icfd->second;
+
+      ToolFramework::Store settings_json;
+      settings_json.JsonParser(cfg.second);
+      for (auto& kv : settings_json)
+        cfd->write16(
+            str_to_uint16(kv.first, 16),
+            str_to_uint16(settings_json.Get<std::string>(kv.first), 16)
+        );
+    };
+  };
+
   *m_log << ML(3) << "success" << std::endl;
 };
 
@@ -126,6 +170,7 @@ bool V812::Execute() {
 bool V812::Finalise() {
   try {
     cfds.clear();
+    pcfds.clear();
 
     return true;
   } catch (std::exception& e) {
