@@ -56,6 +56,8 @@ class RunControl: public Tool {
   std::string RunStop(const char* key);
   std::string SubRun(const char* key);
 
+  void LoadConfig();
+
   int m_config_update_time_sec;
 
   bool m_run_start;

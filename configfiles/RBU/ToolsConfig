@@ -1,2 +1,12 @@
-test1 DummyTool configfiles/RBU/DummyToolConfig
-test2 DummyTool configfiles/RBU/DummyToolConfig
+#test1 DummyTool configfiles/RBU/DummyToolConfig
+#test2 DummyTool configfiles/RBU/DummyToolConfig
+#Configuration Configuration NUll
+RunControl  RunControl Null
+#JobManager
+#JobManager
+#VMEReceive
+#Sorting
+#Nhits
+#Trigger
+#Monitoring
+#FileWriter

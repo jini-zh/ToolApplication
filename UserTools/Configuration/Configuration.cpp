@@ -15,7 +15,7 @@ bool Configuration::Initialise(std::string configfile, DataModel &data){
   InitialiseConfiguration(configfile);
   //m_variables.Print();
   
-  LoadConfig();
+  //  LoadConfig();
 
   if(!m_variables.Get("verbose",m_verbose)) m_verbose=1;
   
@@ -43,6 +43,7 @@ bool Configuration::Execute(){
     LoadConfig();
     
     m_data->load_config=false;
+    m_data->change_config=true;
   }
     
 
@@ -76,9 +77,10 @@ bool Configuration::LoadConfig(){
     m_data->vars.JsonParser(config_json);
     m_data->change_config=true;
     InitialiseConfiguration("");
+    ExportConfiguration();
     return true;
   }
-    m_data->services->SendLog("ERROR DAQ Configuration: Failed to load config from DB" , 0);
-    m_data->services->SendAlarm("ERROR DAQ Configuration: Failed to load config from DB");
-    return false;
+  m_data->services->SendLog("ERROR DAQ Configuration: Failed to load config from DB" , 0);
+  m_data->services->SendAlarm("ERROR DAQ Configuration: Failed to load config from DB");
+  return false;
 }

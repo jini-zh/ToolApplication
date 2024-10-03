@@ -68,6 +68,7 @@ public:
   unsigned long run_number;
   unsigned long sub_run_number;
   unsigned int run_configuration;
+  bool running;
   
   
   JobQueue job_queue;
