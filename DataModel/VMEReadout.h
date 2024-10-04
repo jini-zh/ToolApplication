@@ -12,9 +12,11 @@ public:
   void push(Iterator begin, Iterator end);
   
   std::deque<std::vector<Hit>> get();
+  std::vector<Hit> getEvent();
   bool Send(zmq::socket_t* sock);
   bool Receive(zmq::socket_t* sock);
-  unsigned int size() { return readout.size(); }
+  unsigned int size() const { return readout.size(); }
+  bool empty() const { return readout.empty(); };
   
 private:
   std::mutex mutex;
@@ -32,6 +34,12 @@ template <typename Hit>
 std::deque<std::vector<Hit>> VMEReadout<Hit>::get() {
   std::lock_guard<std::mutex> lock(mutex);
   return std::move(readout);
+};
+
+template <typename Hit>
+std::vector<Hit> VMEReadout<Hit>::getEvent() {
+  std::lock_guard<std::mutex> lock(mutex);
+  return readout.pop_front();
 };
 
 namespace VMEReadout_ {
