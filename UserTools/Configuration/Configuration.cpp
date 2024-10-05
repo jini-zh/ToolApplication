@@ -40,7 +40,7 @@ bool Configuration::Execute(){
   
   if(m_data->load_config){
 
-    LoadConfig();
+    while(!LoadConfig());
     
     m_data->load_config=false;
     m_data->change_config=true;

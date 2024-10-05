@@ -24,7 +24,7 @@ struct Sorting_args:Thread_args{
   boost::posix_time::time_duration period;
   boost::posix_time::ptime last;
   boost::posix_time::time_duration lapse;
-  UnsortedData* unsorted_data;
+  MPMTData* unsorted_data;
 
 };
 

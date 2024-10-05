@@ -22,13 +22,15 @@
 #include "WCTERawData.h"
 #include "DAQHeader.h"
 #include "WCTEMPMTPPS.h"
-#include "UnsortedData.h"
+#include "MPMTData.h"
 #include "VMEReadout.h"
 
 #include "TDCHit.h"
 #include "QDCHit.h"
 
 using namespace ToolFramework;
+
+
 
 /*o*
  * \class DataModel
@@ -76,11 +78,22 @@ public:
   unsigned int thread_num;
 
   std::mutex unsorted_data_mtx;
-  std::map<unsigned long, UnsortedData*> unsorted_data; 
+  std::map<unsigned int, MPMTData*> unsorted_data;
+  
+  std::mutex sorted_data_mtx;
+  std::map<unsigned int, MPMTData*> sorted_data;
 
+  std::mutex triggered_data_mtx;
+  std::map<unsigned int, MPMTData*> triggered_data;
+  
   std::mutex readout_windows_mtx;
   std::deque<ReadoutWindow*>* readout_windows;
 
+  Store monitoring_store;
+  std::map<std::string, unsigned int> hitmap;
+
+  std::vector< bool (*)(void*)> trigger_functions;
+  Store trigger_vars;
   
 private:
   

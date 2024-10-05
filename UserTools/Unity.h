@@ -3,7 +3,6 @@
 #include <FileWriter.h>
 #include <LED.h>
 #include <Monitoring.h>
-#include <Nhits.h>
 #include <RunControl.h>
 #include <Trigger.h>
 #include "MPMT.h"
@@ -18,3 +17,4 @@
 #include "VMESend.h"
 #include "VMEReceive.h"
 #include "SlaveRunControl.h"
+#include "Nhits.h"

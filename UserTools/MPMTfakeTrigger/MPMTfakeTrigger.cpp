@@ -72,10 +72,10 @@ void MPMTfakeTrigger::Thread(Thread_args* arg){
 
   args->last= boost::posix_time::microsec_clock::universal_time();
   
-  std::map<unsigned long, UnsortedData*> m_unsorted_data;
+  std::map<unsigned int, MPMTData*> m_unsorted_data;
   
   args->data->unsorted_data_mtx.lock();
-  for(std::map<unsigned long,UnsortedData*>::iterator it=args->data->unsorted_data.begin(); it!=args->data->unsorted_data.end(); it++){
+  for(std::map<unsigned int,MPMTData*>::iterator it=args->data->unsorted_data.begin(); it!=args->data->unsorted_data.end(); it++){
     
     if(it->first <= args->data->current_coarse_counter - 125000000U){
       m_unsorted_data[it->first]=it->second;
@@ -83,19 +83,19 @@ void MPMTfakeTrigger::Thread(Thread_args* arg){
     }
   }
   
-  for(std::map<unsigned long,UnsortedData*>::iterator it=m_unsorted_data.begin(); it!=m_unsorted_data.end(); it++){
+  for(std::map<unsigned int,MPMTData*>::iterator it=m_unsorted_data.begin(); it!=m_unsorted_data.end(); it++){
     args->data->unsorted_data.erase(it->first);
   }
   args->data->unsorted_data_mtx.unlock();
   
-  for(std::map<unsigned long,UnsortedData*>::iterator it=m_unsorted_data.begin(); it!=m_unsorted_data.end(); it++){
+  for(std::map<unsigned int,MPMTData*>::iterator it=m_unsorted_data.begin(); it!=m_unsorted_data.end(); it++){
     ReadoutWindow* tmp=new ReadoutWindow;
-    tmp->mpmt_hits=it->second->unsorted_mpmt_hits;
-    tmp->mpmt_waveforms=it->second->unsorted_mpmt_waveforms;
+    tmp->mpmt_hits=it->second->mpmt_hits;
+    tmp->mpmt_waveforms=it->second->mpmt_waveforms;
     TriggerInfo tmp_trigger;
     tmp_trigger.type=TriggerType::NONE;
     tmp_trigger.time=it->first;
-    tmp_trigger.mpmt_LEDs=it->second->unsorted_mpmt_leds;
+    tmp_trigger.mpmt_LEDs=it->second->mpmt_leds;
     tmp->triggers_info.push_back(tmp_trigger);
     args->data->readout_windows_mtx.lock();
     args->data->readout_windows->push_back(tmp);

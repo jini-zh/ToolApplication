@@ -59,7 +59,6 @@ bool MPMT::Initialise(std::string configfile, DataModel &data){
   
   m_threadnum=0;
   CreateThread();
-  
   m_freethreads=1;
   
   ExportConfiguration();    
@@ -137,6 +136,7 @@ void MPMT::CreateThread(){
   tmp<<"T"<<m_threadnum;
   m_util->CreateThread(tmp.str(), &Thread, args.at(args.size()-1));
   m_threadnum++;
+  m_data->thread_num++;
 
 }
 
@@ -166,7 +166,7 @@ void MPMT::Thread(Thread_args* arg){
   if( args->lapse.is_negative()){
     unsigned short num_connections = args->connections.size();
     if(args->utils->UpdateConnections("MPMT", args->data_sock, args->connections, args->data_port) > num_connections) args->m_data->services->SendLog("Info: New MPMT connected",4); //add pmt id
-    
+    args->m_data->monitoring_store.Set("connected_MPMTs",num_connections);
     args->last= boost::posix_time::microsec_clock::universal_time();
   }
   
@@ -260,7 +260,7 @@ bool MPMT::ProcessData(void* data){
   MPMTMessages* msgs=reinterpret_cast<MPMTMessages*>(data);
   
   DAQHeader* daq_header=reinterpret_cast<DAQHeader*>(msgs->daq_header->data());
-  unsigned int bin= daq_header->GetCoarseCounter() >> 3; //might not be worth rounding
+  unsigned int bin= daq_header->GetCoarseCounter() >> 6; //might not be worth rounding
   unsigned short card_id = daq_header->GetCardID();
   unsigned short card_type = daq_header->GetCardType();
   unsigned long bytes=msgs->mpmt_data->size();
@@ -331,26 +331,37 @@ bool MPMT::ProcessData(void* data){
     }
   }  
     //printf("data processed \n");
-    
+  
+  /////////////////////////////////////////////////
+  ////adding data to datamodel
+  ////////////////////////////////////////////////////
+  
   msgs->m_data->unsorted_data_mtx.lock();
-  if(msgs->m_data->unsorted_data.count(bin)==0) msgs->m_data->unsorted_data[bin]=new UnsortedData();
+  if(msgs->m_data->unsorted_data.count(bin)==0){
+    msgs->m_data->unsorted_data[bin]=new MPMTData();
+    msgs->m_data->unsorted_data[bin]->coarse_counter=bin<<6;
+  }
   if(card_type<2U){ //WCTEMPMT and buffered ADC
     //printf("in send unsorted ADC\n");
-    msgs->m_data->unsorted_data[bin]->unsorted_mpmt_hits.insert( msgs->m_data->unsorted_data[bin]->unsorted_mpmt_hits.end(), vec_mpmt_hit.begin(), vec_mpmt_hit.end());
-    msgs->m_data->unsorted_data[bin]->unsorted_mpmt_leds.insert( msgs->m_data->unsorted_data[bin]->unsorted_mpmt_leds.end(), vec_mpmt_led.begin(), vec_mpmt_led.end());
-    msgs->m_data->unsorted_data[bin]->unsorted_mpmt_pps.insert( msgs->m_data->unsorted_data[bin]->unsorted_mpmt_pps.end(), vec_mpmt_pps.begin(), vec_mpmt_pps.end());
-    msgs->m_data->unsorted_data[bin]->unsorted_mpmt_waveforms.insert( msgs->m_data->unsorted_data[bin]->unsorted_mpmt_waveforms.end(), vec_mpmt_waveform.begin(), vec_mpmt_waveform.end());
+    msgs->m_data->unsorted_data[bin]->mpmt_hits.insert( msgs->m_data->unsorted_data[bin]->mpmt_hits.end(), vec_mpmt_hit.begin(), vec_mpmt_hit.end());
+    msgs->m_data->unsorted_data[bin]->mpmt_leds.insert( msgs->m_data->unsorted_data[bin]->mpmt_leds.end(), vec_mpmt_led.begin(), vec_mpmt_led.end());
+    msgs->m_data->unsorted_data[bin]->mpmt_pps.insert( msgs->m_data->unsorted_data[bin]->mpmt_pps.end(), vec_mpmt_pps.begin(), vec_mpmt_pps.end());
+    msgs->m_data->unsorted_data[bin]->mpmt_waveforms.insert( msgs->m_data->unsorted_data[bin]->mpmt_waveforms.end(), vec_mpmt_waveform.begin(), vec_mpmt_waveform.end());
    //printf("unsorted ADC sent\n");
   }
   
   else if(card_type==3U){ //trigger card
  //printf("in send unsorted triggercard\n");
-    msgs->m_data->unsorted_data[bin]->unsorted_mpmt_triggers.insert( msgs->m_data->unsorted_data[bin]->unsorted_mpmt_triggers.end(), vec_mpmt_hit.begin(), vec_mpmt_hit.end());
-    msgs->m_data->unsorted_data[bin]->unsorted_mpmt_pps.insert( msgs->m_data->unsorted_data[bin]->unsorted_mpmt_pps.end(), vec_mpmt_pps.begin(), vec_mpmt_pps.end());
+    msgs->m_data->unsorted_data[bin]->mpmt_triggers.insert( msgs->m_data->unsorted_data[bin]->mpmt_triggers.end(), vec_mpmt_hit.begin(), vec_mpmt_hit.end());
+    msgs->m_data->unsorted_data[bin]->mpmt_pps.insert( msgs->m_data->unsorted_data[bin]->mpmt_pps.end(), vec_mpmt_pps.begin(), vec_mpmt_pps.end());
     //printf("unsorted triggercard sent\n");
   }
   msgs->m_data->unsorted_data_mtx.unlock();
 
+  std::stringstream tmp;
+  tmp<<"MPMT:"<<card_id;
+  msgs->m_data->hitmap[tmp.str()]++;
+  
   //printf("delete data\n");
   delete msgs;
   msgs=0;

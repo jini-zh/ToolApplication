@@ -8,25 +8,9 @@
 #include "DataModel.h"
 
 /**
- * \struct Nhits_args_args
- *
- * This is a struct to place data you want your thread to access or exchange with it. The idea is the datainside is only used by the threa\d and so will be thread safe
- *
- * $Author: B.Richards $
- * $Date: 2019/05/28 10:44:00 $
- */
-
-struct Nhits_args:Thread_args{
-
-  Nhits_args();
-  ~Nhits_args();
-
-};
-
-/**
  * \class Nhits
  *
- * This is a template for a Tool that produces a single thread that can be assigned a function seperate to the main thread. Please fill out the descripton and author information.
+ * This is a balnk template for a Tool used by the script to generate a new custom tool. Please fill out the descripton and author information.
 *
 * $Author: B.Richards $
 * $Date: 2019/05/28 10:44:00 $
@@ -45,9 +29,14 @@ class Nhits: public Tool {
 
  private:
 
-  static void Thread(Thread_args* arg); ///< Function to be run by the thread in a loop. Make sure not to block in it
-  Utilities* m_util;  ///< Pointer to utilities class to help with threading
-  Nhits_args* args; ///< thread args (also holds pointer to the thread)
+  bool LoadVariables();
+  static bool NhitsAlgo(void* data);
+  
+  unsigned int threshold;  
+  unsigned int jump;
+  unsigned int window_size;
+  
+
 
 };
 

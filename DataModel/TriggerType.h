@@ -5,7 +5,9 @@
 #include <string>
 #include <SerialisableObject.h>
 #include <BinaryStream.h>
+#include <MPMTData.h>
 
+class DataModel;
 
 enum class TriggerType{ LASER, NHITS, LED, BEAM, NONE };
 
@@ -32,6 +34,23 @@ public:
     return true;
   }
   
+};
+
+struct Trigger_algo_args:Thread_args{
+  Trigger_algo_args(){
+    m_data=0;
+    sorted_data=0;
+    trigger_vars=0;
+  };
+  ~Trigger_algo_args(){
+    m_data=0;
+    trigger_vars=0;
+    delete sorted_data;
+    sorted_data=0;
+  };
+  MPMTData* sorted_data;
+  DataModel* m_data;
+  Store* trigger_vars;
 };
 
 #endif

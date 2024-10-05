@@ -10,7 +10,6 @@ if (tool=="DummyTool") ret=new DummyTool;
 if (tool=="FileWriter") ret=new FileWriter;
 if (tool=="LED") ret=new LED;
 if (tool=="Monitoring") ret=new Monitoring;
-if (tool=="Nhits") ret=new Nhits;
 if (tool=="RunControl") ret=new RunControl;
 if (tool=="Trigger") ret=new Trigger;
 if (tool=="MPMT") ret=new MPMT;
@@ -24,6 +23,7 @@ if (tool=="Dumper") ret=new Dumper;
 if (tool=="Sorting") ret=new Sorting;
 if (tool=="SlaveRunControl") ret=new SlaveRunControl;
 if (tool=="VMESend") ret=new VMESend;
-  if (tool=="VMEReceive") ret=new VMEReceive;
+if (tool=="VMEReceive") ret=new VMEReceive;
+  if (tool=="Nhits") ret=new Nhits;
 return ret;
 }

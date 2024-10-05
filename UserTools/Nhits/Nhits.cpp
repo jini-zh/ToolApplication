@@ -1,53 +1,95 @@
 #include "Nhits.h"
 
-Nhits_args::Nhits_args():Thread_args(){}
-
-Nhits_args::~Nhits_args(){}
-
-
 Nhits::Nhits():Tool(){}
 
 
 bool Nhits::Initialise(std::string configfile, DataModel &data){
-
+  
   InitialiseTool(data);
   InitialiseConfiguration(configfile);
   //m_variables.Print();
 
-  if(!m_variables.Get("verbose",m_verbose)) m_verbose=1;
+  //your code here
 
-  m_util=new Utilities();
-  args=new Nhits_args();
+  LoadVariables();
   
-  m_util->CreateThread("test", &Thread, args);
+  m_data->trigger_functions.push_back(NhitsAlgo);
 
   ExportConfiguration();
-  
+
   return true;
 }
 
 
 bool Nhits::Execute(){
-
+  
+  if(m_data->change_config){
+    InitialiseConfiguration();
+    if(LoadVariables()){
+      m_data->services->SendLog("ERROR: nhits configuration not correctly set" , 0);
+      m_data->services->SendAlarm("ERROR: nhits configuration nto correctly set");
+      return false;
+    }
+  }
+  
   return true;
 }
 
 
 bool Nhits::Finalise(){
 
-  m_util->KillThread(args);
-
-  delete args;
-  args=0;
-
-  delete m_util;
-  m_util=0;
-
   return true;
 }
 
-void Nhits::Thread(Thread_args* arg){
+bool Nhits::NhitsAlgo(void* data){
 
-  Nhits_args* args=reinterpret_cast<Nhits_args*>(arg);
+  Trigger_algo_args* args=reinterpret_cast<Trigger_algo_args*>(data);
 
+  unsigned int threshold=0;
+  unsigned int jump=0;
+  unsigned int window_size=0;
+  args->trigger_vars->Get("nhits_threshold", threshold); // maybe need to throw something here or return false
+  args->trigger_vars->Get("nhits_jump", jump);
+  args->trigger_vars->Get("nhits_window_size", window_size);
+
+  
+  for(unsigned int i=0; i<(sizeof(args->sorted_data->cumulative_sum)/sizeof(unsigned int))-window_size; i++){
+    if((args->sorted_data->cumulative_sum[i+window_size] - args->sorted_data->cumulative_sum[i]) >= threshold){
+      TriggerInfo tmp;
+      tmp.type=TriggerType::NHITS;
+      tmp.time = ((((unsigned long) args->sorted_data->coarse_counter) << 32) & 0b1111111111111111111111111100000000000000000000000000000000000000) | (( ((unsigned long)i) << 13) & 0b0000000000000000000000000011111111111111111111111111111111111111);
+      args->sorted_data->unmerged_triggers.push_back(tmp);
+      i+=jump;
+    }
+  }
+  /*
+  for(int i=0; i< times.size(); i++){
+  TriggerInfo tmp;
+  tmp.type=TriggerType::Nhits;
+  tmp.time = ((coarse_counter << 32) & 0b1111111111111111111111111100000000000000000000000000000000000000) | (( time << 13) & 0b0000000000000000000000000011111111111111111111111111111111111111)
+  //unsinged long upper = coarse_counter;
+  //unsinged long lower = time;
+  //  upper = (upper << 32);
+  //lower = (lower << 13);
+  //unsinged long time64= (upper & 0b1111111111111111111111111100000000000000000000000000000000000000) | (lower & 0b0000000000000000000000000011111111111111111111111111111111111111)
+    
+  */
+
+  return true;
+
+}
+
+
+bool Nhits::LoadVariables(){
+
+  
+  if(!m_variables.Get("threshold", threshold)) return false;
+   if(!m_variables.Get("jump", threshold)) return false;
+   if(!m_variables.Get("window_size", threshold)) return false;
+  
+   m_data->trigger_vars.Set("nhits_threshold", threshold); 
+   m_data->trigger_vars.Set("nhits_jump", jump);
+m_data->trigger_vars.Set("nhits_window_size", window_size); 
+
+  return true;
 }
