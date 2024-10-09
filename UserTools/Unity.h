@@ -18,3 +18,4 @@
 #include "VMEReceive.h"
 #include "SlaveRunControl.h"
 #include "Nhits.h"
+#include "VMETest.h"
