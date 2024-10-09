@@ -72,7 +72,7 @@ void Monitoring::Thread(Thread_args* arg){
     args->data->monitoring_store_mtx.lock();
     args->data->monitoring_store>>json;
     args->data->monitoring_store_mtx.unlock();
-    args->services->SendMonitoringData(json);
+    args->data->services->SendMonitoringData(json);
     
     args->last = boost::posix_time::microsec_clock::universal_time();
     

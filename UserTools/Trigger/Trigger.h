@@ -1,4 +1,4 @@
-0#ifndef Trigger_H
+#ifndef Trigger_H
 #define Trigger_H
 
 #include <string>
