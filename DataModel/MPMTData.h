@@ -17,6 +17,7 @@ struct MPMTData{
   std::vector<WCTEMPMTPPS> mpmt_pps;
   std::vector<WCTEMPMTHit> mpmt_triggers;
   unsigned int cumulative_sum[33554431U];
+  std::mutex unmerged_triggers_mtx;
   std::vector<TriggerInfo> unmerged_triggers;
   
 

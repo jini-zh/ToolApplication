@@ -1,5 +1,6 @@
 #test1 DummyTool configfiles/Dummy/DummyToolConfig
 #test2 DummyTool configfiles/Dummy/DummyToolConfig
-#RunControl RunControl Null
-JobManager JobManager Null
-MPMT MPMT Null
+RunControl RunControl Null
+Configuration Configuration Null
+#JobManager JobManager Null
+#MPMT MPMT Null

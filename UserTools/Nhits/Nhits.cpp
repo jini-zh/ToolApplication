@@ -13,7 +13,8 @@ bool Nhits::Initialise(std::string configfile, DataModel &data){
 
   LoadVariables();
   
-  m_data->trigger_functions.push_back(NhitsAlgo);
+  m_data->trigger_functions["nhits"]=NhitsAlgo;
+  m_data->trigger_vars["nhits"]=&m_trigger_vars;
 
   ExportConfiguration();
 
@@ -48,7 +49,7 @@ bool Nhits::NhitsAlgo(void* data){
   unsigned int threshold=0;
   unsigned int jump=0;
   unsigned int window_size=0;
-  args->trigger_vars->Get("nhits_threshold", threshold); // maybe need to throw something here or return false
+  args->trigger_vars->Get("nhits_threshold", threshold); // maybe need to throw something here or return false // seems like this should be covered form the laod variables so maybe no longer needed.
   args->trigger_vars->Get("nhits_jump", jump);
   args->trigger_vars->Get("nhits_window_size", window_size);
 
@@ -58,7 +59,9 @@ bool Nhits::NhitsAlgo(void* data){
       TriggerInfo tmp;
       tmp.type=TriggerType::NHITS;
       tmp.time = ((((unsigned long) args->sorted_data->coarse_counter) << 32) & 0b1111111111111111111111111100000000000000000000000000000000000000) | (( ((unsigned long)i) << 13) & 0b0000000000000000000000000011111111111111111111111111111111111111);
+      args->sorted_data->unmerged_triggers_mtx.lock();
       args->sorted_data->unmerged_triggers.push_back(tmp);
+      args->sorted_data->unmerged_triggers_mtx.unlock();
       i+=jump;
     }
   }
@@ -87,9 +90,9 @@ bool Nhits::LoadVariables(){
    if(!m_variables.Get("jump", threshold)) return false;
    if(!m_variables.Get("window_size", threshold)) return false;
   
-   m_data->trigger_vars.Set("nhits_threshold", threshold); 
-   m_data->trigger_vars.Set("nhits_jump", jump);
-m_data->trigger_vars.Set("nhits_window_size", window_size); 
+   m_trigger_vars.Set("nhits_threshold", threshold); 
+   m_trigger_vars.Set("nhits_jump", jump);
+   m_trigger_vars.Set("nhits_window_size", window_size); 
 
   return true;
 }

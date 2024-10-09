@@ -44,8 +44,8 @@ bool FileWriter::Initialise(std::string configfile, DataModel &data){
 
 bool FileWriter::Execute(){
 
- if(m_data->change_config) InitialiseConfiguration();
- if(m_data->run_start) LoadConfig();
+  if(m_data->change_config) InitialiseConfiguration(); // surely add load config here   need to do return checks.
+ if(m_data->run_start) LoadConfig();   ///?   oh maybe to ensure file file written before load config happends but this is a crap way of doing it please change Ben
  if(m_data->run_stop) args->period=boost::posix_time::seconds(0);
  
   return true;
@@ -116,7 +116,7 @@ void FileWriter::Thread(Thread_args* arg){
   
 }
 
-void FileWriter::LoadConfig(){
+void FileWriter::LoadConfig(){ // change to bool have a return type
 
   
   if(!m_variables.Get("verbose",m_verbose)) m_verbose=1;

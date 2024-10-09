@@ -89,11 +89,12 @@ public:
   std::mutex readout_windows_mtx;
   std::deque<ReadoutWindow*>* readout_windows;
 
+  std::mutex monitoring_store_mtx;
   Store monitoring_store;
   std::map<std::string, unsigned int> hitmap;
 
-  std::vector< bool (*)(void*)> trigger_functions;
-  Store trigger_vars;
+  std::map<std::string, bool (*)(void*)> trigger_functions;
+  std::map<std::string, Store*> trigger_vars;
   
 private:
   

@@ -35,7 +35,8 @@ class Nhits: public Tool {
   unsigned int threshold;  
   unsigned int jump;
   unsigned int window_size;
-  
+
+  Store m_trigger_vars;
 
 
 };

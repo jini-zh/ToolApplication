@@ -20,6 +20,11 @@ struct Monitoring_args:Thread_args{
 
   Monitoring_args();
   ~Monitoring_args();
+  
+  boost::posix_time::time_duration period;
+  boost::posix_time::time_duration lapse;
+  boost::posix_time::ptime last;
+  DataModel* data;
 
 };
 
@@ -45,9 +50,11 @@ class Monitoring: public Tool {
 
  private:
 
+  bool LoadConfig();
   static void Thread(Thread_args* arg); ///< Function to be run by the thread in a loop. Make sure not to block in it
   Utilities* m_util;  ///< Pointer to utilities class to help with threading
   Monitoring_args* args; ///< thread args (also holds pointer to the thread)
+  
 
 };
 
