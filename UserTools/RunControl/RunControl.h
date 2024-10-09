@@ -49,6 +49,7 @@ class RunControl: public Tool {
 
   static void Thread(Thread_args* arg); ///< Function to be run by the thread in a loop. Make sure not to block in it
   
+  std::string m_configfile;
   Utilities* m_util;  ///< Pointer to utilities class to help with threading
   RunControl_args* args; ///< thread args (also holds pointer to the thread)
   
@@ -71,6 +72,11 @@ class RunControl: public Tool {
   boost::posix_time::ptime m_config_start;
   boost::posix_time::time_duration m_period_reconfigure;
   
+  // verbosity levels: if 'verbosity' < this level, the message type will be logged.
+  int v_error=0;
+  int v_warning=1;
+  int v_message=2;
+  int v_debug=3;
 };
 
 

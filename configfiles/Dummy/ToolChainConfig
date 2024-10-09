@@ -27,6 +27,8 @@ service_kick_sec 60 		      # remove hosts with no heartbeat after given period
 
 ###### Backend Services #####   NEWLY ADDED NEEDS TO HAVE PROPER DESCRIPTIONS AND SOME PRUNING BEFORE RELEASE
 use_backend_services 1		#
+UUID b16a0186-c5df-474c-b880-9fc6c0670d7d  # should this match content of UUID_path
+#UUID  a61b1b3f-eae2-47b2-a3ab-1a7cee752e75
 db_name daq			#
 verbosity 1			#
 max_retries 3			#
