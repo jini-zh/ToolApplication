@@ -110,8 +110,9 @@ bool RunControl::Execute(){
 	      m_data->running=true;
 	      
 	      std::stringstream sql_query;
-	      std::string response;
 	      sql_query<<"insert into run_info values ((select COALESCE(max(run)+1,0) from run_info),0,TIMEZONE('UTC', TO_TIMESTAMP("<<std::to_string(secs_since_epoch)<<")),NULL,"<<m_data->run_configuration<<",'"<<m_run_description<<"') returning run;";
+              
+	      std::string response;
 	      ok = m_data->services->SQLQuery("daq",sql_query.str(), response);
 	      if(!ok){
 	        // FIXME what do do about updating configs, sending an alert, and then finding an error trying to make new run DB entry?
@@ -266,7 +267,9 @@ std::string RunControl::RunStop(const char* key){
   std::stringstream sql_query;
   // FIXME maybe not now maybe local ptime
   sql_query<<"update run_info set stop_time = now() where run_number = "<< m_data->run_number<<" and sub_run_number = "<<m_data->sub_run_number;
-  ok = m_data->services->SQLQuery("daq",sql_query.str());
+  
+  std::string response;
+  bool ok = m_data->services->SQLQuery("daq",sql_query.str(), response);
   if(!ok){
     std::string errmsg = "ERROR "+m_tool_name+"::RunStop Failed to update end time of run with response '"+response+"'";
     m_data->services->SendLog(errmsg, 0);
