@@ -72,11 +72,6 @@ class RunControl: public Tool {
   boost::posix_time::ptime m_config_start;
   boost::posix_time::time_duration m_period_reconfigure;
   
-  // verbosity levels: if 'verbosity' < this level, the message type will be logged.
-  int v_error=0;
-  int v_warning=1;
-  int v_message=2;
-  int v_debug=3;
 };
 
 

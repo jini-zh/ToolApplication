@@ -235,7 +235,6 @@ std::string RunControl::RunStop(const char* key){
 
   if(!m_data->running) return "ERROR: Detector not running";
   if(*key!='N'){
-    m_data->sc_vars.AlertSend("RunStop");
     bool ok = m_data->sc_vars.AlertSend("RunStop");
     if(!ok){
       std::string errmsg = "ERROR "+m_tool_name+"::RunStop failed to send RunStop alert";

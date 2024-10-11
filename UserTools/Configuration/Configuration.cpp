@@ -14,15 +14,16 @@ bool Configuration::Initialise(std::string configfile, DataModel &data){
   
   m_configfile=configfile;
   
+  InitialiseConfiguration(m_configfile);
+  ExportConfiguration();
+  
   if(!m_variables.Get("verbose",m_verbose)) m_verbose=1;
   
   m_data->change_config=false;
   m_data->load_config=false;
   m_data->run_configuration=0;  // test run configuration
   
-  ExportConfiguration();
-  
-  //  m_util=new Utilities();
+  // m_util=new Utilities();
   // args=new Configuration_args();
   
   //m_util->CreateThread("test", &Thread, args);
