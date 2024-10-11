@@ -49,6 +49,7 @@ class RunControl: public Tool {
 
   static void Thread(Thread_args* arg); ///< Function to be run by the thread in a loop. Make sure not to block in it
   
+  std::string m_configfile;
   Utilities* m_util;  ///< Pointer to utilities class to help with threading
   RunControl_args* args; ///< thread args (also holds pointer to the thread)
   

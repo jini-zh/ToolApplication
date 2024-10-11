@@ -45,6 +45,7 @@ class Configuration: public Tool {
 
  private:
 
+  std::string m_configfile;
   static void Thread(Thread_args* arg); ///< Function to be run by the thread in a loop. Make sure not to block in it
   Utilities* m_util;  ///< Pointer to utilities class to help with threading
   Configuration_args* args; ///< thread args (also holds pointer to the thread)
