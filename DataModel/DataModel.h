@@ -58,6 +58,7 @@ public:
   ThreadLoop vme_readout_loop;
   VMEReadout<QDCHit> qdc_readout;
   VMEReadout<TDCHit> tdc_readout;
+  unsigned long vme_poped;
   
   bool load_config;
   bool change_config;
@@ -95,6 +96,11 @@ public:
 
   std::map<std::string, bool (*)(void*)> trigger_functions;
   std::map<std::string, Store*> trigger_vars;
+
+  std::mutex trigger_mtx;
+  unsigned long spill_num;
+  unsigned long vme_event_num;
+  unsigned long readout_num;
   
 private:
   

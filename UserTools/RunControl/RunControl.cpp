@@ -31,6 +31,7 @@ bool RunControl::Initialise(std::string configfile, DataModel &data){
   
   m_data->run_number=0;
   m_data->sub_run_number=0;
+  m_data->readout_num=0;
   //printf("d5\n");
   
   args->start_time=&m_data->start_time;
@@ -118,7 +119,7 @@ bool RunControl::Execute(){
 	      // *m_start_time= difftime(mktime(&utc),mktime(&y2k));
 	      // update DB start time;
 	      // m_data->start_time= *m_start_time;
-	      
+	      m_data->readout_num=0;  
 	      m_data->run_start=true;
 	      m_run_start=false;
               
@@ -150,6 +151,7 @@ bool RunControl::Execute(){
 
     m_data->sub_run=true;
     m_new_sub_run=false;
+    m_data->readout_num=0;
   }
   
   m_lapse = m_period_new_sub_run -( boost::posix_time::microsec_clock::universal_time() - (*m_start_time));

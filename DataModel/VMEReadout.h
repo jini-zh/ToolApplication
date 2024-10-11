@@ -39,7 +39,10 @@ std::deque<std::vector<Hit>> VMEReadout<Hit>::get() {
 template <typename Hit>
 std::vector<Hit> VMEReadout<Hit>::getEvent() {
   std::lock_guard<std::mutex> lock(mutex);
-  return readout.pop_front();
+  ///// this is inefficent ben multiple copies
+  std::vector<Hit> ret= readout.at(0);
+  readout.pop_front();
+  return ret;
 };
 
 namespace VMEReadout_ {

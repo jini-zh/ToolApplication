@@ -26,10 +26,8 @@ struct Trigger_args:Thread_args{
   std::vector<std::string> triggers;
   MPMTData* sorted_data;
   unsigned int bin;
-  std::map<TriggerType, unsigned long> pre_trigger;
-  std::map<TriggerType, unsigned long> post_trigger;
-  std::map<TriggerType, unsigned long> offset_trigger;
- 
+  
+  
 };
 
 /**
@@ -57,8 +55,14 @@ class Trigger: public Tool {
   
   static void Thread(Thread_args* arg); ///< Function to be run by the thread in a loop. Make sure not to block in it
   static bool TriggerJob(void* data);
+  static bool BeamTrigger(void* data); 
+  static bool LedTrigger(void* data);
+  static bool NoneTrigger(void* data);
   Utilities* m_util;  ///< Pointer to utilities class to help with threading
   Trigger_args* args; ///< thread args (also holds pointer to the thread)
+  Store beam_vars;
+  Store led_vars;
+  Store none_vars;
   
 };
 

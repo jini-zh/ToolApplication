@@ -24,7 +24,8 @@ public:
   std::vector<HKMPMTHit> hk_mpmt_hits;
   std::vector<TDCHit> tdc_hits;
   std::vector<QDCHit> qdc_hits;
-
+  unsigned long start_counter;
+  unsigned long readout_num;
 
   bool Print(){
 

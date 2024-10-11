@@ -1,6 +1,6 @@
 #test1 DummyTool configfiles/RBU/DummyToolConfig
 #test2 DummyTool configfiles/RBU/DummyToolConfig
-#Configuration Configuration NUll
+Configuration Configuration NUll
 RunControl  RunControl Null
 #JobManager
 #MPMT

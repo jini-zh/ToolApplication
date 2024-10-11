@@ -19,6 +19,7 @@ bool Monitoring::Initialise(std::string configfile, DataModel &data){
   m_util=new Utilities();
   args=new Monitoring_args();
   args->last =  boost::posix_time::microsec_clock::universal_time();
+  args->data = m_data;
 
   LoadConfig();
 
