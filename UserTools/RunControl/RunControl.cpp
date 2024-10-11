@@ -17,17 +17,9 @@ bool RunControl::Initialise(std::string configfile, DataModel &data){
   InitialiseTool(data);
   
   m_configfile = configfile;
-  InitialiseConfiguration(m_configfile);
-  ExportConfiguration();
-  
-  Log(m_tool_name+" initialised configuration",v_debug,m_verbose);
-  std::cout<<m_tool_name<<" m_variables:\n--------------\n";
-  m_variables.Print();
-  std::cout<<"--------------\n";
-  
   LoadConfig();
   //printf("d2\n");
-
+  
   m_run_start=false;
   m_run_stop=false;
   m_start_time=&m_data->start_time;
@@ -62,9 +54,6 @@ bool RunControl::Initialise(std::string configfile, DataModel &data){
   m_data->sc_vars["SubRunStart"]->SetValue(0);
   //printf("d8\n");
   
-  ExportConfiguration();
-  //printf("d9\n");
-  
   m_data->running=false;
   
   return true;
@@ -75,12 +64,7 @@ bool RunControl::Execute(){
 
   if(m_data->change_config){
     
-    InitialiseConfiguration(m_configfile);
     LoadConfig();
-    ExportConfiguration();
-    std::cout<<m_tool_name<<" m_variables:\n--------------\n";
-    m_variables.Print();
-    std::cout<<"--------------\n";
     
   }
 
@@ -128,12 +112,12 @@ bool RunControl::Execute(){
 	      }
 	      m_data->sub_run_number=0;
 	      
-	      //time_t now = time(0);
-	      //struct tm y2k = {0};
-	      //tm utc = *gmtime(&now);
-	      //*m_start_time= difftime(mktime(&utc),mktime(&y2k));
-	      //update DB start time;
-	      //  m_data->start_time= *m_start_time;
+	      // time_t now = time(0);
+	      // struct tm y2k = {0};
+	      // tm utc = *gmtime(&now);
+	      // *m_start_time= difftime(mktime(&utc),mktime(&y2k));
+	      // update DB start time;
+	      // m_data->start_time= *m_start_time;
 	      
 	      m_data->run_start=true;
 	      m_run_start=false;
@@ -222,8 +206,6 @@ std::string RunControl::RunStart(const char* key){
   if(!run_info.Get("run_description",m_run_description)) m_run_description="NONE";
   if(!run_info.Get("run_configuration",m_data->run_configuration)){
     std::string errmsg = "ERROR "+m_tool_name+"::RunStart failed to get run_configuration for start of run from payload '"+run_json+"'";
-//{"run_description": "new run", "run_configuration":0}
-//failed to get run_configuration for start of run from payload '{'
     m_data->services->SendLog(errmsg, 0);
     m_data->services->SendAlarm(errmsg);
     return errmsg;
@@ -240,6 +222,7 @@ std::string RunControl::RunStart(const char* key){
   }
   
   m_run_start=true;
+  m_data->vars.Set("Status", "Starting new run");
   m_data->load_config=true;
   
   m_config_start=boost::posix_time::microsec_clock::universal_time();
@@ -251,7 +234,7 @@ std::string RunControl::RunStart(const char* key){
 std::string RunControl::RunStop(const char* key){
 
   if(!m_data->running) return "ERROR: Detector not running";
-  if(key!="N"){
+  if(*key!='N'){
     m_data->sc_vars.AlertSend("RunStop");
     bool ok = m_data->sc_vars.AlertSend("RunStop");
     if(!ok){
@@ -265,8 +248,9 @@ std::string RunControl::RunStop(const char* key){
   }
   
   std::stringstream sql_query;
-  // FIXME maybe not now maybe local ptime
-  sql_query<<"update run_info set stop_time = now() where run_number = "<< m_data->run_number<<" and sub_run_number = "<<m_data->sub_run_number;
+
+  unsigned long secs_since_epoch= boost::posix_time::time_duration(boost::posix_time::microsec_clock::universal_time()  -  boost::posix_time::time_from_string("1970-01-01 00:00:00.000")).total_seconds();
+  sql_query<<"update run_info set stop_time = TIMEZONE('UTC', TO_TIMESTAMP("<<std::to_string(secs_since_epoch)<<")) where run = "<< m_data->run_number<<" and subrun = "<<m_data->sub_run_number;
   
   std::string response;
   bool ok = m_data->services->SQLQuery("daq",sql_query.str(), response);
@@ -278,7 +262,7 @@ std::string RunControl::RunStop(const char* key){
   }
   
   //m_data->services->SendLog("Run "+std::to_string(m_data->run_number)+ " stopped", 0);
-  Log("Run "+std::to_string(m_data->run_number)+ " stopped", 0);
+  if(*key!='N') Log("Run "+std::to_string(m_data->run_number)+ " stopped", 0);  // don't report for subrun changes
   return "Run stopped";
   
 }
@@ -293,13 +277,10 @@ std::string RunControl::SubRun(const char* key){
   *m_start_time= boost::posix_time::microsec_clock::universal_time() +  boost::posix_time::minutes(1); ///now+1min
   unsigned long secs_since_epoch= boost::posix_time::time_duration(*m_start_time -  boost::posix_time::time_from_string("1970-01-01 00:00:00.000")).total_seconds();
   
-  // FIXME maybe make this better using definite DB values
-  m_data->sub_run_number++;
-  
   //update db
   std::stringstream sql_query;
-  sql_query<<"insert into run_info values ("<<m_data->run_number<<","<<m_data->sub_run_number<<",TIMEZONE('UTC', TO_TIMESTAMP("<<std::to_string(secs_since_epoch)<<")),NULL,"<<m_data->run_configuration<<",'"<<m_run_description<<"');";
-  //sql_query<<"insert into run_info values ( (SELECT MAX(run) FROM run_info), ((SELECT MAX(subrun) FROM run_info WHERE run=(SELECT MAX(run) FROM run_info))+1), TIMEZONE('UTC', TO_TIMESTAMP("<<std::to_string(secs_since_epoch)<<")),NULL,"<<m_data->run_configuration<<",'"<<m_run_description<<"') returning run,subrun;";
+  //sql_query<<"insert into run_info values ("<<m_data->run_number<<","<<m_data->sub_run_number<<",TIMEZONE('UTC', TO_TIMESTAMP("<<std::to_string(secs_since_epoch)<<")),NULL,"<<m_data->run_configuration<<",'"<<m_run_description<<"');";
+  sql_query<<"insert into run_info values ( (SELECT MAX(run) FROM run_info), ((SELECT MAX(subrun) FROM run_info WHERE run=(SELECT MAX(run) FROM run_info))+1), TIMEZONE('UTC', TO_TIMESTAMP("<<std::to_string(secs_since_epoch)<<")),NULL,"<<m_data->run_configuration<<",'"<<m_run_description<<"') returning run,subrun;";
   
   std::string response;
   bool ok = m_data->services->SQLQuery("daq",sql_query.str(),response);
@@ -329,11 +310,21 @@ std::string RunControl::SubRun(const char* key){
 
 void RunControl::LoadConfig(){
   
+  InitialiseConfiguration(m_configfile);
+  
   //put this in a load config funciton
   if(!m_variables.Get("verbose",m_verbose)) m_verbose=1;
   if(!m_variables.Get("config_update_time_sec",m_config_update_time_sec)) m_config_update_time_sec=30;
   
   m_period_new_sub_run=boost::posix_time::hours(12);
   m_period_reconfigure=boost::posix_time::seconds(m_config_update_time_sec);
+  
+  ExportConfiguration();
+  
+  /*
+  std::clog<<m_tool_name<<"::LoadConfig with m_variables:\n======"<<std::endl;
+  m_variables.Print();
+  std::clog<<"======="<<std::endl;
+  */
   
 }
