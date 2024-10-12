@@ -16,6 +16,7 @@
 #include <V1495.h>
 #include <V792.h>
 #include <V812.h>
+#include <VMEControl.h>
 #include <VMEReceive.h>
 #include <VMESend.h>
 #include <VMETest.h>

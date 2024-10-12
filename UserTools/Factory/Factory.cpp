@@ -23,6 +23,7 @@ if (tool=="V1290") ret=new V1290;
 if (tool=="V1495") ret=new V1495;
 if (tool=="V792") ret=new V792;
 if (tool=="V812") ret=new V812;
+if (tool=="VMEControl") ret=new VMEControl;
 if (tool=="VMEReceive") ret=new VMEReceive;
 if (tool=="VMESend") ret=new VMESend;
 if (tool=="VMETest") ret=new VMETest;
