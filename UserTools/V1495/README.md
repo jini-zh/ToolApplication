@@ -38,15 +38,19 @@ The following settings describe how to connect to the V1495:
     address of the device, e.g., `90AB`. This is the number set by the rotary
     switches on the board.
 
-The only setting specific to V1495 is `config` which should provide the path to
-a JSON file containing a single object with keys being register addresses and
-values being the what is needed to be written to these address. Both keys and
-values should be string containing hexadecimal numbers (unfortunately, JSON
-format doesn't support native hexadecimal numbers). For example,
+Following settings are specific to V1495:
 
+* `registers`: a string containing a single JSON object with keys being register
+  addresses and values being numbers that will be written to these addresses.
+  Both keys and values should be strings containing hexadecimal numbers
+  (unfortunately, JSON format doesn't support native hexadecimal numbers). For
+  example,
 ```json
 {
   "0x300c": "0x01234567",
   "0x3010": "0x89abcdef"
 }
 ```
+* `counters`: a string containing a JSON array with counters registers addresses
+  in hexadecimal. Counters values will be stored in the database for each beam
+  spill.

@@ -54,15 +54,40 @@ void V1495::connect() {
 };
 
 void V1495::configure() {
-  std::string config;
-  if (!m_variables.Get("config", config)) return;
-  ToolFramework::Store json;
-  json.JsonParser(config);
-  for (auto& kv : json)
-    board->write32(
-        str_to_uint16(kv.first, 16),
-        str_to_uint32(json.Get<std::string>(kv.first), 16)
-    );
+  std::string registers;
+  if (m_variables.Get("registers", registers)) {
+    ToolFramework::Store json;
+    json.JsonParser(registers);
+    for (auto& kv : json)
+      board->write32(
+          str_to_uint16(kv.first, 16),
+          str_to_uint32(json.Get<std::string>(kv.first), 16)
+      );
+  };
+
+  std::vector<std::string> addresses;
+  if (m_variables.Get("counters", addresses)) {
+    counters.resize(addresses.size());
+    for (size_t i = 0; i < addresses.size(); ++i)
+      counters[i] = str_to_uint16(addresses[i], 16);
+  } else
+    counters.clear();
+};
+
+void V1495::read_counters() {
+  Store store;
+  std::string address(6, '\0');
+  for (auto& counter : counters) {
+    snprintf(&address[0], address.size() + 1, "0x%hx", counter);
+    store.Set(address, board->read32(counter));
+  };
+
+  std::string json;
+  store >> json;
+  m_data->services->SendMonitoringData(json, "V1495");
+
+  // Reset counters
+  board->write32(0x3002, 1);
 };
 
 bool V1495::Initialise(std::string configfile, DataModel& data) {
@@ -74,6 +99,12 @@ bool V1495::Initialise(std::string configfile, DataModel& data) {
 
     connect();
     configure();
+
+    if (m_data->services)
+      m_data->services->AlertSubscribe(
+          "CounterRead",
+          [this](const char*, const char*) { read_counters(); }
+      );
 
     ExportConfiguration();
 

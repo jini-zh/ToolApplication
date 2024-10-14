@@ -13,9 +13,11 @@ class V1495: public ToolFramework::Tool {
 
   private:
     caen::V1495* board = nullptr;
+    std::vector<uint16_t> counters;
 
     void connect();
     void configure();
+    void read_counters();
 };
 
 #endif
